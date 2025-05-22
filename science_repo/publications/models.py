@@ -70,6 +70,7 @@ class DocumentVersion(models.Model):
     acknowledgments = models.TextField(blank=True, null=True)
     funding = models.TextField(blank=True, null=True)
     references = models.TextField()
+    reviewer_response = models.TextField(blank=True, null=True, help_text="Response to reviewer/editor recommendations for revised submissions")
     metadata = models.JSONField(null=True, blank=True)
     release_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')

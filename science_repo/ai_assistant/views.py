@@ -23,7 +23,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         # Read permissions are allowed to any request
         if request.method in permissions.SAFE_METHODS:
             return True
-        
+
         # Write permissions are only allowed to admin users
         return request.user.is_staff
 
@@ -52,7 +52,7 @@ class AIPromptViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'created_at']
     ordering = ['-created_at']
-    
+
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
@@ -68,43 +68,43 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
     search_fields = ['content', 'section_reference']
     ordering_fields = ['created_at', 'confidence_score']
     ordering = ['-created_at']
-    
+
     def get_serializer_class(self):
         if self.action == 'list':
             return AICommentSuggestionListSerializer
         return AICommentSuggestionSerializer
-    
+
     def get_queryset(self):
         """
         Optionally filter AI comment suggestions by document_version, status, or ai_model.
         """
         queryset = AICommentSuggestion.objects.all()
-        
+
         document_version = self.request.query_params.get('document_version', None)
         if document_version is not None:
             queryset = queryset.filter(document_version=document_version)
-        
+
         status_param = self.request.query_params.get('status', None)
         if status_param is not None:
             queryset = queryset.filter(status=status_param)
-        
+
         ai_model = self.request.query_params.get('ai_model', None)
         if ai_model is not None:
             queryset = queryset.filter(ai_model=ai_model)
-        
+
         return queryset
-    
+
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         """
         Approve an AI comment suggestion and create a real comment.
         """
         suggestion = self.get_object()
-        
+
         # Check if the suggestion is pending
         if suggestion.status != 'pending':
             return Response({'detail': 'Only pending suggestions can be approved.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Get or create a Scientific Comment type
         comment_type, created = CommentType.objects.get_or_create(
             code='SC',
@@ -114,7 +114,7 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
                 'requires_doi': True
             }
         )
-        
+
         # Create a new comment
         comment = Comment.objects.create(
             document_version=suggestion.document_version,
@@ -126,60 +126,60 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
             status='draft',
             is_ai_generated=True
         )
-        
+
         # Create a comment author entry for the current user
         CommentAuthor.objects.create(
             comment=comment,
             user=request.user,
             is_corresponding=True
         )
-        
+
         # Update the suggestion
         suggestion.status = 'approved'
         suggestion.reviewed_at = timezone.now()
         suggestion.reviewed_by = request.user
         suggestion.comment = comment
         suggestion.save()
-        
+
         serializer = self.get_serializer(suggestion)
         return Response(serializer.data)
-    
+
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         """
         Reject an AI comment suggestion.
         """
         suggestion = self.get_object()
-        
+
         # Check if the suggestion is pending
         if suggestion.status != 'pending':
             return Response({'detail': 'Only pending suggestions can be rejected.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Update the suggestion
         suggestion.status = 'rejected'
         suggestion.reviewed_at = timezone.now()
         suggestion.reviewed_by = request.user
         suggestion.save()
-        
+
         serializer = self.get_serializer(suggestion)
         return Response(serializer.data)
-    
+
     @action(detail=True, methods=['post'])
     def modify_and_approve(self, request, pk=None):
         """
         Modify and approve an AI comment suggestion.
         """
         suggestion = self.get_object()
-        
+
         # Check if the suggestion is pending
         if suggestion.status != 'pending':
             return Response({'detail': 'Only pending suggestions can be modified and approved.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Get the modified content
         modified_content = request.data.get('content')
         if not modified_content:
             return Response({'detail': 'Modified content is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Get or create a Scientific Comment type
         comment_type, created = CommentType.objects.get_or_create(
             code='SC',
@@ -189,7 +189,7 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
                 'requires_doi': True
             }
         )
-        
+
         # Create a new comment
         comment = Comment.objects.create(
             document_version=suggestion.document_version,
@@ -201,24 +201,24 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
             status='draft',
             is_ai_generated=True
         )
-        
+
         # Create a comment author entry for the current user
         CommentAuthor.objects.create(
             comment=comment,
             user=request.user,
             is_corresponding=True
         )
-        
+
         # Update the suggestion
         suggestion.status = 'modified'
         suggestion.reviewed_at = timezone.now()
         suggestion.reviewed_by = request.user
         suggestion.comment = comment
         suggestion.save()
-        
+
         serializer = self.get_serializer(suggestion)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['post'])
     def generate(self, request):
         """
@@ -227,26 +227,26 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
         document_version_id = request.data.get('document_version')
         ai_model_id = request.data.get('ai_model')
         ai_prompt_id = request.data.get('ai_prompt')
-        
+
         if not document_version_id or not ai_model_id or not ai_prompt_id:
             return Response({'detail': 'Document version, AI model, and AI prompt are required.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             document_version = DocumentVersion.objects.get(id=document_version_id)
             ai_model = AIModel.objects.get(id=ai_model_id, is_active=True)
             ai_prompt = AIPrompt.objects.get(id=ai_prompt_id, is_active=True, ai_model=ai_model)
         except (DocumentVersion.DoesNotExist, AIModel.DoesNotExist, AIPrompt.DoesNotExist):
             return Response({'detail': 'Document version, AI model, or AI prompt not found.'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         # In a real implementation, this would call the AI service
         # For this example, we'll simulate AI-generated suggestions
-        
+
         # Start timing for execution time measurement
         start_time = time.time()
-        
+
         # Simulate AI processing
         suggestions = []
-        
+
         # Create a suggestion for the introduction
         intro_suggestion = AICommentSuggestion.objects.create(
             document_version=document_version,
@@ -260,7 +260,7 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
             confidence_score=0.85
         )
         suggestions.append(intro_suggestion)
-        
+
         # Create a suggestion for the methodology
         method_suggestion = AICommentSuggestion.objects.create(
             document_version=document_version,
@@ -274,7 +274,7 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
             confidence_score=0.92
         )
         suggestions.append(method_suggestion)
-        
+
         # Create a reference for the methodology suggestion
         AIReference.objects.create(
             suggestion=method_suggestion,
@@ -284,10 +284,10 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
             citation_text="Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences. New York, NY: Routledge Academic",
             trust_level="high"
         )
-        
+
         # End timing
         execution_time = time.time() - start_time
-        
+
         # Log the prompt execution
         AIPromptLog.objects.create(
             ai_model=ai_model,
@@ -298,7 +298,7 @@ class AICommentSuggestionViewSet(viewsets.ModelViewSet):
             execution_time=execution_time,
             token_count=500  # Simulated token count
         )
-        
+
         serializer = AICommentSuggestionListSerializer(suggestions, many=True)
         return Response(serializer.data)
 
@@ -325,17 +325,17 @@ class AIReferenceViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'authors', 'citation_text', 'doi']
-    
+
     def get_queryset(self):
         """
         Optionally filter AI references by suggestion.
         """
         queryset = AIReference.objects.all()
-        
+
         suggestion = self.request.query_params.get('suggestion', None)
         if suggestion is not None:
             queryset = queryset.filter(suggestion=suggestion)
-        
+
         return queryset
 
 
@@ -346,15 +346,20 @@ class AIFeedbackViewSet(viewsets.ModelViewSet):
     queryset = AIFeedback.objects.all()
     serializer_class = AIFeedbackSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         """
         Users can only see their own feedback.
         Admins can see all feedback.
         """
+        # Check if this is a schema generation request
+        if getattr(self, 'swagger_fake_view', False):
+            # Return an empty queryset for schema generation
+            return AIFeedback.objects.none()
+
         if self.request.user.is_staff:
             return AIFeedback.objects.all()
         return AIFeedback.objects.filter(user=self.request.user)
-    
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

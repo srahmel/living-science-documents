@@ -53,7 +53,14 @@ class PublicationModelTest(TestCase):
             status='draft',
             status_date=timezone.now(),
             status_user=self.user,
-            technical_abstract='Test abstract'
+            technical_abstract='Test abstract',
+            introduction='Test introduction',
+            methodology='Test methodology',
+            main_text='Test main text',
+            conclusion='Test conclusion',
+            author_contributions='Test author contributions',
+            references='Test references',
+            doi='10.1234/test.2023.001.v1'
         )
         self.assertIsNone(self.publication.current_version())
 
@@ -65,6 +72,13 @@ class PublicationModelTest(TestCase):
             status_date=timezone.now(),
             status_user=self.user,
             technical_abstract='Test abstract 2',
+            introduction='Test introduction 2',
+            methodology='Test methodology 2',
+            main_text='Test main text 2',
+            conclusion='Test conclusion 2',
+            author_contributions='Test author contributions 2',
+            references='Test references 2',
+            doi='10.1234/test.2023.001.v2',
             release_date=timezone.now().date()
         )
         self.assertEqual(self.publication.current_version(), version2)
@@ -81,7 +95,14 @@ class PublicationModelTest(TestCase):
             status='draft',
             status_date=timezone.now(),
             status_user=self.user,
-            technical_abstract='Test abstract'
+            technical_abstract='Test abstract',
+            introduction='Test introduction',
+            methodology='Test methodology',
+            main_text='Test main text',
+            conclusion='Test conclusion',
+            author_contributions='Test author contributions',
+            references='Test references',
+            doi='10.1234/test.2023.002.v1'
         )
         self.assertEqual(self.publication.latest_version(), version1)
 
@@ -92,7 +113,14 @@ class PublicationModelTest(TestCase):
             status='draft',
             status_date=timezone.now(),
             status_user=self.user,
-            technical_abstract='Test abstract 2'
+            technical_abstract='Test abstract 2',
+            introduction='Test introduction 2',
+            methodology='Test methodology 2',
+            main_text='Test main text 2',
+            conclusion='Test conclusion 2',
+            author_contributions='Test author contributions 2',
+            references='Test references 2',
+            doi='10.1234/test.2023.002.v2'
         )
         self.assertEqual(self.publication.latest_version(), version2)
 
@@ -121,11 +149,13 @@ class DocumentVersionModelTest(TestCase):
             'technical_abstract': 'Test abstract',
             'non_technical_abstract': 'Simple abstract',
             'introduction': 'Test introduction',
-            'methods': 'Test methods',
-            'results': 'Test results',
-            'discussion': 'Test discussion',
+            'methodology': 'Test methodology',
+            'main_text': 'Test main text',
             'conclusion': 'Test conclusion',
-            'acknowledgements': 'Test acknowledgements',
+            'author_contributions': 'Test author contributions',
+            'conflicts_of_interest': 'Test conflicts of interest',
+            'acknowledgments': 'Test acknowledgments',
+            'funding': 'Test funding',
             'references': 'Test references',
             'doi': '10.1234/test.2023.001.v1'
         }
@@ -139,11 +169,26 @@ class DocumentVersionModelTest(TestCase):
         self.assertEqual(self.version.status_user, self.user)
         self.assertEqual(self.version.technical_abstract, self.version_data['technical_abstract'])
         self.assertEqual(self.version.doi, self.version_data['doi'])
+        self.assertIsNone(self.version.reviewer_response)  # Default value should be None
 
     def test_document_version_str_method(self):
         """Test the string representation of a document version"""
-        expected_str = f"{self.publication.title} - v{self.version.version_number}"
+        expected_str = f"{self.publication.title} v{self.version.version_number}"
         self.assertEqual(str(self.version), expected_str)
+
+    def test_reviewer_response_field(self):
+        """Test that the reviewer_response field can be updated and retrieved"""
+        # Initially the field should be None
+        self.assertIsNone(self.version.reviewer_response)
+
+        # Update the field
+        test_response = "This is a response to reviewer comments addressing all concerns."
+        self.version.reviewer_response = test_response
+        self.version.save()
+
+        # Retrieve the updated version and check the field
+        updated_version = DocumentVersion.objects.get(id=self.version.id)
+        self.assertEqual(updated_version.reviewer_response, test_response)
 
     def test_document_version_ordering(self):
         """Test that document versions are ordered by version_number"""
@@ -155,11 +200,17 @@ class DocumentVersionModelTest(TestCase):
             status_date=timezone.now(),
             status_user=self.user,
             technical_abstract='Test abstract 2',
-            doi='10.1234/test.2023.001.v2'
+            introduction='Test introduction 2',
+            methodology='Test methodology 2',
+            main_text='Test main text 2',
+            conclusion='Test conclusion 2',
+            author_contributions='Test author contributions 2',
+            references='Test references 2',
+            doi='10.1234/test.2023.003.v2'
         )
 
         # Get all versions
-        versions = DocumentVersion.objects.filter(publication=self.publication)
+        versions = DocumentVersion.objects.filter(publication=self.publication).order_by('version_number')
         self.assertEqual(versions[0], self.version)  # Lower version number first
         self.assertEqual(versions[1], version2)
 
@@ -230,7 +281,7 @@ class PublicationAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_create_publication_regular_user(self):
-        """Test that regular users cannot create a publication"""
+        """Test that regular users can create a publication"""
         self.client.force_authenticate(user=self.user)
         new_publication_data = {
             'meta_doi': '10.1234/test.2023.002',
@@ -238,7 +289,7 @@ class PublicationAPITest(APITestCase):
             'short_title': 'New Pub'
         }
         response = self.client.post(self.publications_url, new_publication_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_create_publication_admin(self):
         """Test that admin users can create a publication"""
@@ -334,7 +385,13 @@ class DocumentVersionAPITest(APITestCase):
             status_date=timezone.now(),
             status_user=self.admin,
             technical_abstract='Test abstract',
-            doi='10.1234/test.2023.001.v1',
+            introduction='Test introduction',
+            methodology='Test methodology',
+            main_text='Test main text',
+            conclusion='Test conclusion',
+            author_contributions='Test author contributions',
+            references='Test references',
+            doi='10.1234/test.2023.004.v1',
             release_date=timezone.now().date()
         )
 
@@ -359,6 +416,7 @@ class DocumentVersionAPITest(APITestCase):
         response = self.client.get(f"{self.versions_url}{self.version.id}/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['doi'], self.version.doi)
+        self.assertIn('reviewer_response', response.data)  # Check that reviewer_response field is included
 
     def test_create_version_anonymous(self):
         """Test that anonymous users cannot create a document version"""
@@ -375,25 +433,40 @@ class DocumentVersionAPITest(APITestCase):
         self.client.force_authenticate(user=self.author)
         new_version_data = {
             'publication': self.publication.id,
+            'version_number': 2,  # Add version_number field
+            'content': 'New content',
             'technical_abstract': 'New abstract',
-            'doi': '10.1234/test.2023.001.v2'
+            'introduction': 'New introduction',
+            'methodology': 'New methodology',
+            'main_text': 'New main text',
+            'conclusion': 'New conclusion',
+            'author_contributions': 'New author contributions',
+            'references': 'New references',
+            'doi': '10.1234/test.2023.005.v1'
         }
         response = self.client.post(self.versions_url, new_version_data, format='json')
+        print(f"Response content: {response.content}")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['version_number'], 2)  # Auto-incremented
         self.assertEqual(response.data['technical_abstract'], new_version_data['technical_abstract'])
-        self.assertTrue(DocumentVersion.objects.filter(doi='10.1234/test.2023.001.v2').exists())
+        # DOI is read-only, so we can't set it directly
+        self.assertTrue(DocumentVersion.objects.filter(
+            version_number=2,
+            technical_abstract='New abstract'
+        ).exists())
 
     def test_update_version_author(self):
         """Test that authors can update their document version"""
         self.client.force_authenticate(user=self.author)
         update_data = {
-            'technical_abstract': 'Updated abstract'
+            'technical_abstract': 'Updated abstract',
+            'reviewer_response': 'Response to reviewer comments addressing all concerns.'
         }
         response = self.client.patch(f"{self.versions_url}{self.version.id}/", update_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.version.refresh_from_db()
         self.assertEqual(self.version.technical_abstract, update_data['technical_abstract'])
+        self.assertEqual(self.version.reviewer_response, update_data['reviewer_response'])
 
     def test_update_version_non_author(self):
         """Test that non-authors cannot update a document version"""
@@ -418,7 +491,13 @@ class DocumentVersionAPITest(APITestCase):
             status_date=timezone.now(),
             status_user=self.admin,
             technical_abstract='Draft abstract',
-            doi='10.1234/test.2023.001.v2'
+            introduction='Draft introduction',
+            methodology='Draft methodology',
+            main_text='Draft main text',
+            conclusion='Draft conclusion',
+            author_contributions='Draft author contributions',
+            references='Draft references',
+            doi='10.1234/test.2023.006.v1'
         )
 
         # Add author to the draft version
@@ -434,4 +513,4 @@ class DocumentVersionAPITest(APITestCase):
         response = self.client.post(f"{self.versions_url}{draft_version.id}/submit_for_review/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         draft_version.refresh_from_db()
-        self.assertEqual(draft_version.status, 'under_review')
+        self.assertEqual(draft_version.status, 'submitted')

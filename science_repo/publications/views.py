@@ -329,6 +329,11 @@ class ReviewProcessViewSet(viewsets.ModelViewSet):
         - Authors can see review processes for their documents
         - Reviewers can see review processes they're assigned to
         """
+        # Check if this is a schema generation request
+        if getattr(self, 'swagger_fake_view', False):
+            # Return an empty queryset for schema generation
+            return ReviewProcess.objects.none()
+
         user = self.request.user
 
         # Editorial board members can see all
@@ -401,6 +406,11 @@ class ReviewerViewSet(viewsets.ModelViewSet):
         - Editorial board members can see all reviewers
         - Reviewers can see only themselves
         """
+        # Check if this is a schema generation request
+        if getattr(self, 'swagger_fake_view', False):
+            # Return an empty queryset for schema generation
+            return Reviewer.objects.none()
+
         user = self.request.user
 
         # Editorial board members can see all
