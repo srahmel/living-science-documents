@@ -19,7 +19,23 @@ The API is organized into the following namespaces:
 - `/api/publications/`: Publication management endpoints
 - `/api/comments/`: Comment system endpoints
 - `/api/ai/`: AI integration endpoints
-- `/api/docs/`: API documentation
+
+## API Documentation (Swagger)
+
+The API is documented using Swagger/OpenAPI. You can access the documentation at:
+
+- `/swagger/`: Interactive Swagger UI for exploring and testing the API
+- `/redoc/`: ReDoc UI for a more readable documentation experience
+- `/swagger.json` or `/swagger.yaml`: Raw schema files for integration with other tools
+
+### How to use Swagger UI:
+
+1. Start the development server: `python manage.py runserver`
+2. Navigate to `http://localhost:8000/swagger/` in your browser
+3. You'll see all available endpoints organized by namespace
+4. Click on any endpoint to expand it and see details (parameters, request body, responses)
+5. You can try out endpoints directly from the UI by clicking the "Try it out" button
+6. For authenticated endpoints, you'll need to click the "Authorize" button and provide your JWT token
 
 ### Authentication
 
@@ -122,17 +138,17 @@ The API is organized into the following namespaces:
    DJANGO_SECRET_KEY=your_secret_key
    DJANGO_DEBUG=True
    DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
-   
+
    POSTGRES_DB=living_science
    POSTGRES_USER=postgres
    POSTGRES_PASSWORD=your_password
    POSTGRES_HOST=localhost
    POSTGRES_PORT=5432
-   
+
    ORCID_CLIENT_ID=your_orcid_client_id
    ORCID_CLIENT_SECRET=your_orcid_client_secret
    FRONTEND_URL=http://localhost:3000
-   
+
    CORS_ALLOW_ALL_ORIGINS=True
    CORS_ALLOWED_ORIGINS=http://localhost:3000
    ```
