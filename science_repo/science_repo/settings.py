@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from decouple import config
+from datetime import timedelta
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,13 +23,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s_oqe5yzes^j7h)xnqk%xic=ew_kv-5j!+#wjxuef%%x==@ta!'
+SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-s_oqe5yzes^j7h)xnqk%xic=ew_kv-5j!+#wjxuef%%x==@ta!')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
+# Frontend URL for redirects
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 
 AUTH_USER_MODEL = 'core.User'
 
@@ -46,19 +50,27 @@ INSTALLED_APPS = [
     'publications',
     'rest_framework',
     'rest_framework_simplejwt',
-
+    'django_filters',
+    'corsheaders',
+    'drf_yasg',
 ]
 
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CORS middleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# CORS settings
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=DEBUG, cast=bool)
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000', cast=lambda v: [s.strip() for s in v.split(',')])
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'science_repo.urls'
 
@@ -130,6 +142,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Media files (Uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -140,12 +157,39 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',
+        'user': '1000/day',
+    },
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
-from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
 }
 
 # ORCID OAuth2 settings
@@ -155,3 +199,56 @@ ORCID_BASE_URL = 'https://orcid.org'
 ORCID_API_URL = 'https://pub.orcid.org/v3.0'
 ORCID_AUTH_URL = f'{ORCID_BASE_URL}/oauth/authorize'
 ORCID_TOKEN_URL = f'{ORCID_BASE_URL}/oauth/token'
+
+# DOI settings
+DOI_PREFIX = config('DOI_PREFIX', default='10.1234')
+DOI_DATACITE_URL = config('DOI_DATACITE_URL', default='https://api.datacite.org')
+DOI_DATACITE_USERNAME = config('DOI_DATACITE_USERNAME', default='')
+DOI_DATACITE_PASSWORD = config('DOI_DATACITE_PASSWORD', default='')
+DOI_CROSSREF_URL = config('DOI_CROSSREF_URL', default='https://api.crossref.org')
+DOI_CROSSREF_USERNAME = config('DOI_CROSSREF_USERNAME', default='')
+DOI_CROSSREF_PASSWORD = config('DOI_CROSSREF_PASSWORD', default='')
+DOI_AUTO_GENERATE = config('DOI_AUTO_GENERATE', default=True, cast=bool)
+
+# Email settings
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@example.com')
+
+# OJS settings
+OJS_BASE_URL = config('OJS_BASE_URL', default='https://ojs.example.com')
+OJS_API_KEY = config('OJS_API_KEY', default='')
+OJS_JOURNAL_ID = config('OJS_JOURNAL_ID', default=1, cast=int)
+
+# Reposis settings
+REPOSIS_URL = config('REPOSIS_URL', default='https://reposis.example.com')
+REPOSIS_USERNAME = config('REPOSIS_USERNAME', default='')
+REPOSIS_PASSWORD = config('REPOSIS_PASSWORD', default='')
+
+# OpenAI settings
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+OPENAI_ORGANIZATION = config('OPENAI_ORGANIZATION', default='')
+OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4o')
+OPENAI_API_BASE = config('OPENAI_API_BASE', default='https://api.openai.com/v1')
+OPENAI_MAX_TOKENS = config('OPENAI_MAX_TOKENS', default=1000, cast=int)
+OPENAI_TEMPERATURE = config('OPENAI_TEMPERATURE', default=0.7, cast=float)
+
+# Swagger settings
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'JSON_EDITOR': True,
+    'PERSIST_AUTH': True,
+    'REFETCH_SCHEMA_WITH_AUTH': True,
+    'REFETCH_SCHEMA_ON_LOGOUT': True,
+}

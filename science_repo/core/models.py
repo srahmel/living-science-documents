@@ -46,7 +46,7 @@ class Author(models.Model):
     institution = models.CharField(max_length=255, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     orcid = models.CharField(max_length=50, null=True, blank=True)
-    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="core_authors")
 
 
 # 💬 Kommentar
@@ -59,7 +59,7 @@ class Comment(models.Model):
     status = models.CharField(max_length=50)  # draft, submitted, published, etc.
     created_at = models.DateTimeField(auto_now_add=True)
     status_date = models.DateField()
-    status_user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="moderated_comments")
+    status_user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="core_moderated_comments")
     reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_comments")
     doi = models.CharField(max_length=200, null=True, blank=True)
 
