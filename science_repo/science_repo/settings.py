@@ -100,9 +100,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('POSTGRES_DB'),
         'USER': config('POSTGRES_USER'),
-        'PASSWORD': config('POSTGRES_PASSWORD'),
-        'HOST': config('POSTGRES_HOST'),
-        'PORT': config('POSTGRES_PORT'),
+        'PASSWORD': config('POSTGRES_PASSWORD', default=''),
+        'HOST': config('POSTGRES_HOST', default=''),   # ← leerer Host ⇒ Unix-Socket
+        'PORT': config('POSTGRES_PORT', default=''),   # ← leer lassen
     }
 }
 
@@ -141,7 +141,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+from decouple import config
+
+FORCE_SCRIPT_NAME = config('FORCE_SCRIPT_NAME', default=None)
+STATIC_URL = config('STATIC_URL', default='/static/')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Media files (Uploads)
