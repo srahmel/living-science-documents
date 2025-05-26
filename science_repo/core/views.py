@@ -7,8 +7,9 @@ from rest_framework.response import Response
 from .orcid import ORCIDAuth
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserSerializer, LoginSerializer
+from .serializers import UserSerializer, LoginSerializer, RegistrationSerializer
 from .analytics import AnalyticsService
+from django.contrib.auth.models import Group
 
 User = get_user_model()
 
@@ -170,6 +171,12 @@ def orcid_callback(request):
 
             user.save()
 
+        # Assign user to the readers group if created
+        if created:
+            from django.contrib.auth.models import Group
+            readers_group = Group.objects.get(name='readers')
+            user.groups.add(readers_group)
+
         # Create aliases for other names
         from core.models import UserAlias
         for other_name in user_info['other_names']:
@@ -328,3 +335,52 @@ def analytics_document_views(request, document_version_id=None):
         'document_version_id': document_version_id,
         'time_period': time_period or 'all',
     })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_view(request):
+    """
+    Register a new user.
+
+    This endpoint allows users to register with a username, password, and other required fields.
+    New users are automatically assigned to the 'readers' group.
+
+    Parameters:
+    - username: User's username
+    - password: User's password
+    - password2: Password confirmation
+    - email: User's email
+    - first_name: User's first name
+    - last_name: User's last name
+    - dsgvo_consent: Whether the user has accepted the DSGVO terms (required)
+    - affiliation: User's affiliation (optional)
+    - research_field: User's research field (optional)
+    - qualification: User's qualification (optional)
+
+    Returns:
+    - 201 Created: Registration successful, returns user data and tokens
+    - 400 Bad Request: Invalid input data
+    """
+    serializer = RegistrationSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+
+        # Assign user to the readers group
+        readers_group = Group.objects.get(name='readers')
+        user.groups.add(readers_group)
+
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+
+        # Send welcome email
+        from core.email import EmailService
+        EmailService.send_welcome_email(user)
+
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

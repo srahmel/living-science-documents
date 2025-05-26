@@ -39,6 +39,7 @@ The API is documented using Swagger/OpenAPI. You can access the documentation at
 
 ### Authentication
 
+- `POST /api/auth/register/`: Register a new user
 - `POST /api/auth/login/`: Login with username and password
 - `GET /api/auth/orcid/login/`: Redirect to ORCID for authentication
 - `GET /api/auth/orcid/callback/`: Handle ORCID callback
