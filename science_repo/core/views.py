@@ -3,6 +3,8 @@ from django.conf import settings
 from rest_framework import status, viewsets, generics, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from rest_framework.response import Response
 from .orcid import ORCIDAuth
 from django.contrib.auth import get_user_model, authenticate
@@ -10,10 +12,31 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserSerializer, LoginSerializer, RegistrationSerializer
 from .analytics import AnalyticsService
 from django.contrib.auth.models import Group
+from django.urls import reverse
 
 User = get_user_model()
 
 
+@swagger_auto_schema(
+    method='post',
+    request_body=LoginSerializer,
+    responses={
+        200: openapi.Response(
+            description="Authentication successful",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'refresh': openapi.Schema(type=openapi.TYPE_STRING, description='JWT refresh token'),
+                    'access': openapi.Schema(type=openapi.TYPE_STRING, description='JWT access token'),
+                    'user': openapi.Schema(type=openapi.TYPE_OBJECT, description='User data')
+                }
+            )
+        ),
+        401: "Unauthorized",
+        400: "Bad Request"
+    },
+    operation_description="Login with username and password to get JWT tokens."
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
@@ -87,6 +110,21 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 
+@swagger_auto_schema(
+    method='get',
+    responses={
+        200: openapi.Response(
+            description="ORCID authentication URL",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'auth_url': openapi.Schema(type=openapi.TYPE_STRING, description='URL to redirect to for ORCID authentication')
+                }
+            )
+        )
+    },
+    operation_description="Get the ORCID authentication URL for user login/registration."
+)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def orcid_login(request):
@@ -98,12 +136,31 @@ def orcid_login(request):
     Returns:
     - 200 OK: Returns the ORCID authentication URL
     """
-    redirect_uri = request.build_absolute_uri('/api/auth/orcid/callback')
+    # Änderung hier: Verwenden von reverse zur Generierung der URL
+    callback_url = reverse('orcid_callback')
+    redirect_uri = request.build_absolute_uri(callback_url)
     # Request read-limited scope to get more user information
     auth_url = ORCIDAuth.get_auth_url(redirect_uri, scope="/authenticate /read-limited")
     return Response({'auth_url': auth_url})
 
 
+@swagger_auto_schema(
+    method='get',
+    manual_parameters=[
+        openapi.Parameter(
+            name='code',
+            in_=openapi.IN_QUERY,
+            description='Authorization code from ORCID',
+            type=openapi.TYPE_STRING,
+            required=True
+        )
+    ],
+    responses={
+        302: "Redirect to frontend with JWT tokens",
+        400: "Bad Request"
+    },
+    operation_description="Handle the ORCID authentication callback after user authorization."
+)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def orcid_callback(request):
@@ -123,7 +180,9 @@ def orcid_callback(request):
     """
     try:
         code = request.GET.get('code')
-        redirect_uri = request.build_absolute_uri('/api/auth/orcid/callback')
+        # Änderung hier: Verwenden von reverse zur Generierung der URL
+        callback_url = reverse('orcid_callback')
+        redirect_uri = request.build_absolute_uri(callback_url)
 
         # Get ORCID token
         token_data = ORCIDAuth.get_token(code, redirect_uri)
@@ -337,6 +396,25 @@ def analytics_document_views(request, document_version_id=None):
     })
 
 
+@swagger_auto_schema(
+    method='post',
+    request_body=RegistrationSerializer,
+    responses={
+        201: openapi.Response(
+            description="Registration successful",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'refresh': openapi.Schema(type=openapi.TYPE_STRING, description='JWT refresh token'),
+                    'access': openapi.Schema(type=openapi.TYPE_STRING, description='JWT access token'),
+                    'user': openapi.Schema(type=openapi.TYPE_OBJECT, description='User data')
+                }
+            )
+        ),
+        400: "Bad Request"
+    },
+    operation_description="Register a new user with username, password, and other required fields."
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_view(request):

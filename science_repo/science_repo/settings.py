@@ -97,12 +97,8 @@ WSGI_APPLICATION = 'science_repo.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('POSTGRES_DB'),
-        'USER': config('POSTGRES_USER'),
-        'PASSWORD': config('POSTGRES_PASSWORD', default=''),
-        'HOST': config('POSTGRES_HOST', default=''),   # ← leerer Host ⇒ Unix-Socket
-        'PORT': config('POSTGRES_PORT', default=''),   # ← leer lassen
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
