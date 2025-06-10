@@ -220,7 +220,7 @@ class PublicationAPITest(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.publications_url = reverse('publication-list')
+        self.publications_url = '/api/publications/publications/'
 
         # Create admin user
         self.admin = User.objects.create_user(
@@ -344,7 +344,7 @@ class DocumentVersionAPITest(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.versions_url = reverse('documentversion-list')
+        self.versions_url = '/api/publications/document-versions/'
 
         # Create admin user
         self.admin = User.objects.create_user(

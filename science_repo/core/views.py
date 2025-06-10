@@ -13,6 +13,7 @@ from .serializers import UserSerializer, LoginSerializer, RegistrationSerializer
 from .analytics import AnalyticsService
 from django.contrib.auth.models import Group
 from django.urls import reverse
+from django.middleware.csrf import get_token
 
 User = get_user_model()
 
@@ -462,3 +463,34 @@ def register_view(request):
         }, status=status.HTTP_201_CREATED)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@swagger_auto_schema(
+    method='get',
+    responses={
+        200: openapi.Response(
+            description="CSRF token",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'csrfToken': openapi.Schema(type=openapi.TYPE_STRING, description='CSRF token')
+                }
+            )
+        )
+    },
+    operation_description="Get a CSRF token for use in frontend applications."
+)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def csrf_token_view(request):
+    """
+    Get a CSRF token.
+
+    This endpoint returns a CSRF token that can be used by frontend applications
+    to make requests that require CSRF protection.
+
+    Returns:
+    - 200 OK: Returns the CSRF token
+    """
+    token = get_token(request)
+    return Response({'csrfToken': token})

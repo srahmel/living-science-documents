@@ -41,7 +41,7 @@ class RegistrationAPITest(APITestCase):
         """Test that a user can register with valid data"""
         mock_send_welcome_email.return_value = True
 
-        response = self.client.post('/api/auth/auth/register/', self.valid_data, format='json')
+        response = self.client.post('/api/auth/register/', self.valid_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Check if user was created
@@ -72,7 +72,7 @@ class RegistrationAPITest(APITestCase):
         data = self.valid_data.copy()
         data['password2'] = 'differentpassword'
 
-        response = self.client.post('/api/auth/auth/register/', data, format='json')
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('password', response.data)
         self.assertFalse(User.objects.filter(username=data['username']).exists())
@@ -82,28 +82,28 @@ class RegistrationAPITest(APITestCase):
         # Test missing email
         data = self.valid_data.copy()
         data.pop('email')
-        response = self.client.post('/api/auth/auth/register/', data, format='json')
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('email', response.data)
 
         # Test missing first_name
         data = self.valid_data.copy()
         data.pop('first_name')
-        response = self.client.post('/api/auth/auth/register/', data, format='json')
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('first_name', response.data)
 
         # Test missing last_name
         data = self.valid_data.copy()
         data.pop('last_name')
-        response = self.client.post('/api/auth/auth/register/', data, format='json')
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('last_name', response.data)
 
         # Test missing dsgvo_consent
         data = self.valid_data.copy()
         data.pop('dsgvo_consent')
-        response = self.client.post('/api/auth/auth/register/', data, format='json')
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('dsgvo_consent', response.data)
 
@@ -112,7 +112,7 @@ class RegistrationAPITest(APITestCase):
         data = self.valid_data.copy()
         data['dsgvo_consent'] = False
 
-        response = self.client.post('/api/auth/auth/register/', data, format='json')
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('dsgvo_consent', response.data)
         self.assertFalse(User.objects.filter(username=data['username']).exists())
@@ -127,6 +127,25 @@ class RegistrationAPITest(APITestCase):
         )
 
         # Try to register with the same username
-        response = self.client.post('/api/auth/auth/register/', self.valid_data, format='json')
+        response = self.client.post('/api/auth/register/', self.valid_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('username', response.data)
+
+
+class CSRFTokenAPITest(APITestCase):
+    """Test the CSRF token API endpoint"""
+
+    def setUp(self):
+        self.client = APIClient()
+
+        # Add 'testserver' to ALLOWED_HOSTS
+        from django.conf import settings
+        settings.ALLOWED_HOSTS.append('testserver')
+
+    def test_csrf_token_endpoint(self):
+        """Test that the CSRF token endpoint returns a valid token"""
+        response = self.client.get('/api/auth/csrf/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('csrfToken', response.data)
+        self.assertIsNotNone(response.data['csrfToken'])
+        self.assertTrue(len(response.data['csrfToken']) > 0)

@@ -41,6 +41,7 @@ The API is documented using Swagger/OpenAPI. You can access the documentation at
 
 - `POST /api/auth/register/`: Register a new user
 - `POST /api/auth/login/`: Login with username and password
+- `GET /api/auth/csrf/`: Get a CSRF token for use in frontend applications
 - `GET /api/auth/orcid/login/`: Redirect to ORCID for authentication
 - `GET /api/auth/orcid/callback/`: Handle ORCID callback
 - `POST /api/auth/refresh/`: Refresh JWT token

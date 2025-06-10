@@ -11,6 +11,7 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('register/', views.register_view, name='register'),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('csrf/', views.csrf_token_view, name='csrf_token'),
     path('orcid/login/', views.orcid_login, name='orcid_login'),
     path('orcid/callback/', views.orcid_callback, name='orcid_callback'),
     path('', include(router.urls)),

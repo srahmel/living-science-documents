@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to Living Science Documents</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .header {
+            background-color: #4285f4;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4285f4;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Welcome to Living Science Documents</h1>
+    </div>
+
+    <div class="content">
+        <p>Hello {{ user.first_name }},</p>
+
+        <p>Thank you for registering with Living Science Documents, the platform for open scientific publications and collaboration.</p>
+
+        <p>With your account, you can:</p>
+        <ul>
+            <li>View and comment on scientific publications</li>
+            <li>Participate in open peer reviews</li>
+            <li>Publish your own research findings</li>
+            <li>Collaborate with colleagues</li>
+        </ul>
+
+        <p>You can log in using your email address ({{ user.email }}) and password.</p>
+
+        <a href="{{ login_url }}" class="button">Log in now</a>
+
+        <p>If you have any questions, feel free to contact our support team at any time.</p>
+
+        <p>Best regards,<br>
+        The Living Science Documents Team</p>
+    </div>
+
+    <div class="footer">
+        <p>© 2025 Living Science Documents. All rights reserved.</p>
+    </div>
+</body>
+</html>
