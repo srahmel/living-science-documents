@@ -20,7 +20,7 @@ class Publication(models.Model):
         ('archived', 'Archived'),
     ]
 
-    meta_doi = models.CharField(max_length=200, unique=True)
+    meta_doi = models.CharField(max_length=200, unique=True, null=True, blank=True)
     title = models.CharField(max_length=500)
     short_title = models.CharField(max_length=200, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

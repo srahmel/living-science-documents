@@ -62,6 +62,7 @@ The API is documented using Swagger/OpenAPI. You can access the documentation at
 - `PUT /api/publications/document-versions/{id}/`: Update a document version
 - `DELETE /api/publications/document-versions/{id}/`: Delete a document version
 - `POST /api/publications/document-versions/{id}/submit_for_review/`: Submit a document version for review
+- `POST /api/publications/document-versions/{id}/generate_keywords/`: Generate AI keywords for a document version
 - `POST /api/publications/document-versions/{id}/publish/`: Publish a document version
 
 - `GET /api/publications/review-processes/`: List all review processes

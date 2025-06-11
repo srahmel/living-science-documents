@@ -116,7 +116,15 @@ class PublicationViewSet(viewsets.ModelViewSet):
         return PublicationSerializer
 
     def perform_create(self, serializer):
-        serializer.save(editorial_board=self.request.user)
+        # First save the publication to get an ID
+        publication = serializer.save(editorial_board=self.request.user)
+
+        # If meta_doi is not provided, generate one using the publication ID
+        if not publication.meta_doi:
+            from core.doi import DOIService
+            meta_doi = DOIService.generate_doi(entity_type='publication', entity_id=publication.id)
+            publication.meta_doi = meta_doi
+            publication.save()
 
     @action(detail=True, methods=['get'])
     def versions(self, request, pk=None):
@@ -166,11 +174,33 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
         if latest_version:
             version_number = latest_version.version_number + 1
 
-        serializer.save(
+        # Save the document version
+        document_version = serializer.save(
             version_number=version_number,
             status_user=self.request.user,
             status_date=timezone.now()
         )
+
+        # Generate AI keywords for the new document version
+        try:
+            from ai_assistant.models import AIModel
+            from ai_assistant.openai_service import OpenAIService
+
+            # Get the default AI model
+            ai_model = AIModel.objects.filter(is_active=True).first()
+
+            if ai_model:
+                # Generate keywords using AI
+                OpenAIService.generate_keywords(
+                    document_version=document_version,
+                    ai_model=ai_model,
+                    user=self.request.user
+                )
+        except Exception as e:
+            # Log the error but don't fail the document creation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error generating AI keywords: {str(e)}")
 
     @action(detail=True, methods=['post'])
     def submit_for_review(self, request, pk=None):
@@ -201,6 +231,39 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(document)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def generate_keywords(self, request, pk=None):
+        """
+        Generate AI keywords for a document version.
+        """
+        document = self.get_object()
+
+        try:
+            from ai_assistant.models import AIModel
+            from ai_assistant.openai_service import OpenAIService
+
+            # Get the default AI model
+            ai_model = AIModel.objects.filter(is_active=True).first()
+
+            if not ai_model:
+                return Response({'detail': 'No active AI model found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Generate keywords using AI
+            keywords = OpenAIService.generate_keywords(
+                document_version=document,
+                ai_model=ai_model,
+                user=request.user,
+                max_keywords=int(request.data.get('max_keywords', 5))
+            )
+
+            # Return the generated keywords
+            from .serializers import KeywordSerializer
+            serializer = KeywordSerializer(keywords, many=True)
+            return Response(serializer.data)
+
+        except Exception as e:
+            return Response({'detail': f'Error generating keywords: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
