@@ -180,7 +180,7 @@ REST_FRAMEWORK = {
         'anon': '100/day',
         'user': '1000/day',
     },
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'EXCEPTION_HANDLER': 'core.exceptions.custom_exception_handler',
 }
 
 SIMPLE_JWT = {
