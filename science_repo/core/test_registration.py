@@ -74,7 +74,7 @@ class RegistrationAPITest(APITestCase):
 
         response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('password', response.data)
+        self.assertIn('error', response.data)
         self.assertFalse(User.objects.filter(username=data['username']).exists())
 
     def test_registration_missing_required_fields(self):
@@ -84,28 +84,28 @@ class RegistrationAPITest(APITestCase):
         data.pop('email')
         response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('email', response.data)
+        self.assertIn('error', response.data)
 
         # Test missing first_name
         data = self.valid_data.copy()
         data.pop('first_name')
         response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('first_name', response.data)
+        self.assertIn('error', response.data)
 
         # Test missing last_name
         data = self.valid_data.copy()
         data.pop('last_name')
         response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('last_name', response.data)
+        self.assertIn('error', response.data)
 
         # Test missing dsgvo_consent
         data = self.valid_data.copy()
         data.pop('dsgvo_consent')
         response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('dsgvo_consent', response.data)
+        self.assertIn('error', response.data)
 
     def test_registration_dsgvo_consent_false(self):
         """Test that registration fails when dsgvo_consent is False"""
@@ -114,7 +114,7 @@ class RegistrationAPITest(APITestCase):
 
         response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('dsgvo_consent', response.data)
+        self.assertIn('error', response.data)
         self.assertFalse(User.objects.filter(username=data['username']).exists())
 
     def test_registration_duplicate_username(self):
@@ -129,7 +129,7 @@ class RegistrationAPITest(APITestCase):
         # Try to register with the same username
         response = self.client.post('/api/auth/register/', self.valid_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('username', response.data)
+        self.assertIn('error', response.data)
 
 
 class CSRFTokenAPITest(APITestCase):

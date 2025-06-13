@@ -22,7 +22,7 @@ class User(AbstractUser):
 
 # 📚 Publikation (übergreifende Klammer)
 class Publication(models.Model):
-    meta_doi = models.CharField(max_length=200, unique=True)
+    meta_doi = models.CharField(max_length=200, unique=True, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 

@@ -115,7 +115,7 @@ class DocumentVersionSerializer(serializers.ModelSerializer):
                   'references', 'reviewer_response', 'metadata', 'release_date', 'status', 'status_date', 'status_user',
                   'authors', 'figures', 'tables', 'keywords', 'attachments', 'review_process',
                   'status_user_details']
-        read_only_fields = ['id', 'doi', 'status_date']
+        read_only_fields = ['id', 'doi', 'status_date', 'publication', 'version_number']
 
     def get_status_user_details(self, obj):
         if obj.status_user:
@@ -141,12 +141,29 @@ class PublicationSerializer(serializers.ModelSerializer):
     document_versions = DocumentVersionListSerializer(many=True, read_only=True)
     current_version = serializers.SerializerMethodField()
     editorial_board_details = serializers.SerializerMethodField()
+    # Add content fields from DocumentVersion
+    content = serializers.SerializerMethodField()
+    technical_abstract = serializers.SerializerMethodField()
+    non_technical_abstract = serializers.SerializerMethodField()
+    introduction = serializers.SerializerMethodField()
+    methodology = serializers.SerializerMethodField()
+    main_text = serializers.SerializerMethodField()
+    conclusion = serializers.SerializerMethodField()
+    author_contributions = serializers.SerializerMethodField()
+    conflicts_of_interest = serializers.SerializerMethodField()
+    acknowledgments = serializers.SerializerMethodField()
+    funding = serializers.SerializerMethodField()
+    references = serializers.SerializerMethodField()
+    reviewer_response = serializers.SerializerMethodField()
 
     class Meta:
         model = Publication
         fields = ['id', 'meta_doi', 'title', 'short_title', 'created_at', 'updated_at', 
                   'status', 'editorial_board', 'document_versions', 'current_version',
-                  'editorial_board_details']
+                  'editorial_board_details', 'content', 'technical_abstract', 
+                  'non_technical_abstract', 'introduction', 'methodology', 'main_text', 
+                  'conclusion', 'author_contributions', 'conflicts_of_interest', 
+                  'acknowledgments', 'funding', 'references', 'reviewer_response']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_current_version(self, obj):
@@ -164,19 +181,141 @@ class PublicationSerializer(serializers.ModelSerializer):
             }
         return None
 
+    # Helper method to get the latest version
+    def _get_latest_version(self, obj):
+        return obj.latest_version() or obj.current_version()
+
+    # Methods to get content fields from the latest version
+    def get_content(self, obj):
+        version = self._get_latest_version(obj)
+        return version.content if version else ""
+
+    def get_technical_abstract(self, obj):
+        version = self._get_latest_version(obj)
+        return version.technical_abstract if version else ""
+
+    def get_non_technical_abstract(self, obj):
+        version = self._get_latest_version(obj)
+        return version.non_technical_abstract if version else ""
+
+    def get_introduction(self, obj):
+        version = self._get_latest_version(obj)
+        return version.introduction if version else ""
+
+    def get_methodology(self, obj):
+        version = self._get_latest_version(obj)
+        return version.methodology if version else ""
+
+    def get_main_text(self, obj):
+        version = self._get_latest_version(obj)
+        return version.main_text if version else ""
+
+    def get_conclusion(self, obj):
+        version = self._get_latest_version(obj)
+        return version.conclusion if version else ""
+
+    def get_author_contributions(self, obj):
+        version = self._get_latest_version(obj)
+        return version.author_contributions if version else ""
+
+    def get_conflicts_of_interest(self, obj):
+        version = self._get_latest_version(obj)
+        return version.conflicts_of_interest if version else ""
+
+    def get_acknowledgments(self, obj):
+        version = self._get_latest_version(obj)
+        return version.acknowledgments if version else ""
+
+    def get_funding(self, obj):
+        version = self._get_latest_version(obj)
+        return version.funding if version else ""
+
+    def get_references(self, obj):
+        version = self._get_latest_version(obj)
+        return version.references if version else ""
+
+    def get_reviewer_response(self, obj):
+        version = self._get_latest_version(obj)
+        return version.reviewer_response if version else ""
+
 
 class PublicationListSerializer(serializers.ModelSerializer):
     """Simplified serializer for listing publications"""
     current_version_number = serializers.SerializerMethodField()
+    authors = serializers.SerializerMethodField()
+    created_by = serializers.SerializerMethodField()
+    metadata = serializers.SerializerMethodField()
 
     class Meta:
         model = Publication
         fields = ['id', 'meta_doi', 'title', 'short_title', 'created_at', 
-                  'status', 'current_version_number']
+                  'status', 'current_version_number', 'authors', 'created_by', 'metadata']
         read_only_fields = ['id', 'created_at']
 
     def get_current_version_number(self, obj):
         current = obj.current_version()
         if current:
             return current.version_number
+        return None
+
+    def get_authors(self, obj):
+        """Return authors from the latest version"""
+        latest_version = obj.latest_version()
+        if latest_version and latest_version.authors.exists():
+            return AuthorSerializer(latest_version.authors.all(), many=True).data
+
+        # If no authors or no version, include the editorial_board as a virtual author
+        if obj.editorial_board:
+            # Create a virtual author object with the editorial_board's information
+            virtual_author = {
+                'id': None,  # Not a real author record
+                'name': obj.editorial_board.get_full_name() or obj.editorial_board.username,
+                'address': None,
+                'institution': obj.editorial_board.affiliation,
+                'email': obj.editorial_board.email,
+                'orcid': obj.editorial_board.orcid,
+                'user': obj.editorial_board.id,
+                'order': 0,
+                'is_corresponding': True,
+                'user_details': {
+                    'id': obj.editorial_board.id,
+                    'username': obj.editorial_board.username,
+                    'full_name': obj.editorial_board.get_full_name(),
+                    'orcid': obj.editorial_board.orcid
+                }
+            }
+            return [virtual_author]
+
+        return []
+
+    def get_created_by(self, obj):
+        """Return the user who created the publication"""
+        # First try to get the user from the latest version's authors
+        latest_version = obj.latest_version()
+        if latest_version and latest_version.authors.filter(user__isnull=False).exists():
+            author = latest_version.authors.filter(user__isnull=False).first()
+            if author and author.user:
+                return {
+                    'id': author.user.id,
+                    'username': author.user.username,
+                    'full_name': author.user.get_full_name(),
+                    'orcid': getattr(author.user, 'orcid', None)
+                }
+
+        # If no author with user is found, use the editorial_board as fallback
+        if obj.editorial_board:
+            return {
+                'id': obj.editorial_board.id,
+                'username': obj.editorial_board.username,
+                'full_name': obj.editorial_board.get_full_name(),
+                'orcid': getattr(obj.editorial_board, 'orcid', None)
+            }
+
+        return None
+
+    def get_metadata(self, obj):
+        """Return metadata from the latest version"""
+        latest_version = obj.latest_version()
+        if latest_version:
+            return latest_version.metadata
         return None

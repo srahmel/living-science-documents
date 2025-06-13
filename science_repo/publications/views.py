@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
 from django.conf import settings
+from django.http import Http404
 from .models import Publication, DocumentVersion, Author, Figure, Table, Keyword, Attachment, ReviewProcess, Reviewer
 from .serializers import (
     PublicationSerializer, PublicationListSerializer, 
@@ -126,6 +127,43 @@ class PublicationViewSet(viewsets.ModelViewSet):
             publication.meta_doi = meta_doi
             publication.save()
 
+        # Automatically create a draft version for the new publication
+        from .models import DocumentVersion
+        # Generate a DOI for the document version
+        from core.doi import DOIService
+        version_doi = DOIService.generate_doi(entity_type='document_version', entity_id=f"{publication.id}.1")
+
+        # Create the draft version with empty content fields
+        document_version = DocumentVersion.objects.create(
+            publication=publication,
+            version_number=1,
+            doi=version_doi,
+            content='',
+            technical_abstract='',
+            introduction='',
+            methodology='',
+            main_text='',
+            conclusion='',
+            author_contributions='',
+            references='',
+            status='draft',
+            status_user=self.request.user,
+            status_date=timezone.now()
+        )
+
+        # Automatically create an author entry for the user who created the publication
+        from .models import Author
+        Author.objects.create(
+            document_version=document_version,
+            user=self.request.user,
+            name=self.request.user.get_full_name() or self.request.user.username,
+            email=self.request.user.email,
+            institution=getattr(self.request.user, 'affiliation', None),
+            orcid=getattr(self.request.user, 'orcid', None),
+            is_corresponding=True,
+            order=0
+        )
+
     @action(detail=True, methods=['get'])
     def versions(self, request, pk=None):
         """
@@ -140,13 +178,203 @@ class PublicationViewSet(viewsets.ModelViewSet):
     def current_version(self, request, pk=None):
         """
         Get the current version of a publication.
+
+        If the user is an author of any version of the publication, is the editorial board member,
+        is a staff/superuser, or is the creator of any version, they can see the latest version regardless of status.
+        Otherwise, only the latest published version is returned.
         """
         publication = self.get_object()
+
+        # Log the authentication information
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"current_version called for publication {publication.id}")
+        logger.info(f"Authentication header: {request.META.get('HTTP_AUTHORIZATION', 'None')}")
+        logger.info(f"User authenticated: {request.user.is_authenticated}")
+        logger.info(f"Auth object: {request.auth}")
+        if request.user.is_authenticated:
+            logger.info(f"User ID: {request.user.id}, Username: {request.user.username}")
+        else:
+            logger.info(f"User NOT identified")
+
+        # Check if the user is authenticated
+        if request.user.is_authenticated:
+            # Check if the user is a staff member or superuser
+            is_staff_or_superuser = request.user.is_staff or request.user.is_superuser
+            logger.info(f"User is staff or superuser: {is_staff_or_superuser}")
+
+            # Check if the user is the editorial board member
+            is_editorial_board = (publication.editorial_board == request.user)
+            logger.info(f"User is editorial board: {is_editorial_board}")
+
+            # Check if the user is an author of any version of the publication
+            is_author = False
+            # Check if the user is the creator of any version of the publication
+            is_creator = False
+            # Check if the user is the creator of the publication itself
+            # First try to get the user from the latest version's authors
+            is_publication_creator = False
+            latest_version = publication.latest_version()
+            if latest_version:
+                # Check if the user is an author of the latest version
+                if latest_version.authors.filter(user=request.user).exists():
+                    is_publication_creator = True
+                    logger.info(f"User is an author of the latest version")
+
+                # Check if the user is the status_user of the latest version
+                if latest_version.status_user == request.user:
+                    is_publication_creator = True
+                    logger.info(f"User is the status_user of the latest version")
+
+            # If not found as an author or status_user, check if the user is the editorial board
+            if not is_publication_creator and publication.editorial_board == request.user:
+                is_publication_creator = True
+                logger.info(f"User is the editorial board of the publication")
+
+            logger.info(f"User is publication creator: {is_publication_creator}")
+
+            # Check all versions to see if the user is an author or creator of any of them
+            all_versions = list(publication.document_versions.all())
+            logger.info(f"Publication has {len(all_versions)} versions")
+
+            for version in all_versions:
+                logger.info(f"Checking version {version.id}, status: {version.status}")
+
+                # Check if the user is an author of this version
+                author_exists = version.authors.filter(user=request.user).exists()
+                if author_exists:
+                    is_author = True
+                    logger.info(f"User is author of version {version.id}")
+                else:
+                    logger.info(f"User is NOT author of version {version.id}")
+
+                # Check if the user is the creator of this version
+                creator_match = (version.status_user == request.user)
+                if creator_match:
+                    is_creator = True
+                    logger.info(f"User is creator of version {version.id}")
+                else:
+                    logger.info(f"User is NOT creator of version {version.id}")
+
+                # Log the authors of this version
+                authors = list(version.authors.all())
+                logger.info(f"Version {version.id} has {len(authors)} authors")
+                for author in authors:
+                    logger.info(f"Author: {author.name}, user_id: {author.user_id if author.user else 'None'}")
+
+                # If the user is either an author or a creator, we can break the loop
+                if is_author or is_creator:
+                    break
+
+            # If the user is an author, creator, publication creator, editorial board member, or staff/superuser, 
+            # return the latest version regardless of status
+            if is_author or is_creator or is_publication_creator or is_editorial_board or is_staff_or_superuser:
+                logger.info(f"User has access. is_author: {is_author}, is_creator: {is_creator}, is_publication_creator: {is_publication_creator}, is_editorial_board: {is_editorial_board}, is_staff_or_superuser: {is_staff_or_superuser}")
+                # First try to get the latest version
+                version = publication.latest_version()
+                if version:
+                    logger.info(f"Returning latest version: {version.id}, status: {version.status}")
+                    serializer = DocumentVersionSerializer(version)
+                    return Response(serializer.data)
+
+                # If no latest version, try to get the current (published) version
+                version = publication.current_version()
+                if version:
+                    logger.info(f"No latest version found, returning current published version: {version.id}, status: {version.status}")
+                    serializer = DocumentVersionSerializer(version)
+                    return Response(serializer.data)
+
+                # If no versions found through the helper methods, try to get any version directly
+                all_versions = list(publication.document_versions.all())
+                if all_versions:
+                    # Get the version with the highest version number
+                    version = sorted(all_versions, key=lambda v: v.version_number, reverse=True)[0]
+                    logger.info(f"Found version directly: {version.id}, status: {version.status}")
+                    serializer = DocumentVersionSerializer(version)
+                    return Response(serializer.data)
+
+                # If no versions at all, but user has special access, return the full publication data
+                logger.info("No versions found at all, but user has special access")
+                # Create a serializer for the publication
+                pub_serializer = PublicationSerializer(publication)
+                # Return the full publication data
+                return Response(pub_serializer.data)
+            else:
+                logger.info(f"User does not have special access. is_author: {is_author}, is_creator: {is_creator}, is_publication_creator: {is_publication_creator}, is_editorial_board: {is_editorial_board}, is_staff_or_superuser: {is_staff_or_superuser}")
+        else:
+            logger.info("User is not authenticated")
+
+        # For non-authenticated users or users who are not authors or editorial board members,
+        # return only the published version
         version = publication.current_version()
         if version:
+            logger.info(f"Returning published version: {version.id}")
             serializer = DocumentVersionSerializer(version)
             return Response(serializer.data)
-        return Response({'detail': 'No published version found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # If no published version found, check if there are any versions at all
+        all_versions = list(publication.document_versions.filter(status='published'))
+        if all_versions:
+            # Get the version with the highest version number
+            version = sorted(all_versions, key=lambda v: v.version_number, reverse=True)[0]
+            logger.info(f"Found published version directly: {version.id}, status: {version.status}")
+            serializer = DocumentVersionSerializer(version)
+            return Response(serializer.data)
+
+        # Check if the user is an author, creator, editorial office member, or staff/superuser
+        if request.user.is_authenticated:
+            # Check if the user is a staff member or superuser
+            is_staff_or_superuser = request.user.is_staff or request.user.is_superuser
+
+            # Check if the user is the editorial board member
+            is_editorial_board = (publication.editorial_board == request.user)
+
+            # Check if the user is an author or creator of any version
+            is_author = False
+            is_creator = False
+            all_versions = list(publication.document_versions.all())
+
+            for version in all_versions:
+                # Check if the user is an author of this version
+                if version.authors.filter(user=request.user).exists():
+                    is_author = True
+                    break
+
+                # Check if the user is the creator of this version
+                if version.status_user == request.user:
+                    is_creator = True
+                    break
+
+            # If the user has special access, return the full publication data
+            if is_author or is_creator or is_editorial_board or is_staff_or_superuser:
+                logger.info(f"User has special access in second check. is_author: {is_author}, is_creator: {is_creator}, is_editorial_board: {is_editorial_board}, is_staff_or_superuser: {is_staff_or_superuser}")
+
+                # First try to get the latest version
+                latest_version = publication.latest_version()
+                if latest_version:
+                    logger.info(f"User has special access, returning latest version: {latest_version.id}")
+                    serializer = DocumentVersionSerializer(latest_version)
+                    return Response(serializer.data)
+
+                # If no latest version found, check if there are any versions at all
+                all_versions = list(publication.document_versions.all())
+                if all_versions:
+                    # Get the version with the highest version number
+                    version = sorted(all_versions, key=lambda v: v.version_number, reverse=True)[0]
+                    logger.info(f"User has special access, found version directly: {version.id}, status: {version.status}")
+                    serializer = DocumentVersionSerializer(version)
+                    return Response(serializer.data)
+
+                # If no versions at all, return the full publication data
+                logger.info("No versions found at all, but user has special access in second check")
+                # Create a serializer for the publication
+                pub_serializer = PublicationSerializer(publication)
+                # Return the full publication data
+                return Response(pub_serializer.data)
+
+        logger.info("No published version found")
+        from core.exceptions import format_error_response
+        return format_error_response('No published version found.', status.HTTP_404_NOT_FOUND)
 
 
 class DocumentVersionViewSet(viewsets.ModelViewSet):
@@ -166,9 +394,312 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
             return DocumentVersionListSerializer
         return DocumentVersionSerializer
 
+    def _create_document_version_if_not_exists(self, request, version_id):
+        """
+        Helper method to create a document version if it doesn't exist.
+        Returns a tuple (document_version, response) where:
+        - document_version is the created document version or None if it couldn't be created
+        - response is a Response object if there was an error, or None if successful
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Document version with ID {version_id} not found, checking permissions to create one")
+
+        # Check if the user is authenticated
+        if not request.user.is_authenticated:
+            logger.info("User is not authenticated")
+            from core.exceptions import format_error_response
+            return None, format_error_response('Document version not found.', status.HTTP_404_NOT_FOUND)
+
+        # Get the document version ID
+        if not version_id:
+            logger.info("No version ID provided")
+            from core.exceptions import format_error_response
+            return None, format_error_response('No version ID provided.', status.HTTP_400_BAD_REQUEST)
+
+        # Try to find the publication associated with this version ID
+        # This is a simplification - in a real scenario, you might need to parse the ID
+        # to extract the publication ID, or use a different approach
+        try:
+            # Assuming the version ID is a numeric value
+            publication_id = int(version_id)
+            publication = Publication.objects.get(id=publication_id)
+            logger.info(f"Found publication with ID {publication_id}")
+        except (ValueError, Publication.DoesNotExist):
+            logger.info(f"Publication with ID {version_id} not found")
+            from core.exceptions import format_error_response
+            return None, format_error_response('Publication not found.', status.HTTP_404_NOT_FOUND)
+
+        # Check if the user has appropriate permissions
+        is_author = False
+        is_creator = False
+        is_editorial_board = (publication.editorial_board == request.user)
+        is_staff_or_superuser = request.user.is_staff or request.user.is_superuser
+
+        # Check if the user is an author or creator of any version of the publication
+        all_versions = list(publication.document_versions.all())
+        for version in all_versions:
+            # Check if the user is an author of this version
+            if version.authors.filter(user=request.user).exists():
+                is_author = True
+                break
+
+            # Check if the user is the creator of this version
+            if version.status_user == request.user:
+                is_creator = True
+                break
+
+        # If the user has appropriate permissions, create a new document version
+        if is_author or is_creator or is_editorial_board or is_staff_or_superuser:
+            logger.info(f"User has appropriate permissions. is_author: {is_author}, is_creator: {is_creator}, is_editorial_board: {is_editorial_board}, is_staff_or_superuser: {is_staff_or_superuser}")
+
+            # Generate a DOI for the document version
+            from core.doi import DOIService
+            version_number = 1
+            latest_version = publication.document_versions.order_by('-version_number').first()
+            if latest_version:
+                version_number = latest_version.version_number + 1
+            version_doi = DOIService.generate_doi(entity_type='document_version', entity_id=f"{publication.id}.{version_number}")
+
+            # Create the document version
+            document_version = DocumentVersion.objects.create(
+                publication=publication,
+                version_number=version_number,
+                doi=version_doi,
+                content='',
+                technical_abstract='',
+                introduction='',
+                methodology='',
+                main_text='',
+                conclusion='',
+                author_contributions='',
+                references='',
+                status='draft',
+                status_user=request.user,
+                status_date=timezone.now()
+            )
+
+            # Create an author entry for the user
+            Author.objects.create(
+                document_version=document_version,
+                user=request.user,
+                name=request.user.get_full_name() or request.user.username,
+                email=request.user.email,
+                institution=getattr(request.user, 'affiliation', None),
+                orcid=getattr(request.user, 'orcid', None),
+                is_corresponding=True,
+                order=0
+            )
+
+            logger.info(f"Created new document version with ID {document_version.id}")
+            return document_version, None
+        else:
+            logger.info(f"User does not have appropriate permissions. is_author: {is_author}, is_creator: {is_creator}, is_editorial_board: {is_editorial_board}, is_staff_or_superuser: {is_staff_or_superuser}")
+            from core.exceptions import format_error_response
+            return None, format_error_response('Document version not found.', status.HTTP_404_NOT_FOUND)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a document version.
+        If the document version doesn't exist and the user has appropriate permissions
+        (author, creator, or editorial office), create a new document version.
+        """
+        try:
+            # Try to get the document version
+            return super().retrieve(request, *args, **kwargs)
+        except Http404:
+            # If the document version doesn't exist, try to create one
+            document_version, error_response = self._create_document_version_if_not_exists(request, kwargs.get('pk'))
+            if document_version:
+                serializer = self.get_serializer(document_version)
+                return Response(serializer.data)
+            else:
+                return error_response
+
+    def update(self, request, *args, **kwargs):
+        """
+        Update a document version.
+        If the document version doesn't exist and the user has appropriate permissions
+        (author, creator, or editorial office), create a new document version and update it.
+        """
+        try:
+            # Try to get the document version
+            return super().update(request, *args, **kwargs)
+        except Http404:
+            # If the document version doesn't exist, try to create one
+            document_version, error_response = self._create_document_version_if_not_exists(request, kwargs.get('pk'))
+            if document_version:
+                # Update the document version with the request data
+                serializer = self.get_serializer(document_version, data=request.data, partial=False)
+                serializer.is_valid(raise_exception=True)
+                self.perform_update(serializer)
+                return Response(serializer.data)
+            else:
+                return error_response
+
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Partially update a document version.
+        If the document version doesn't exist and the user has appropriate permissions
+        (author, creator, or editorial office), create a new document version and update it.
+        """
+        try:
+            # Try to get the document version
+            return super().partial_update(request, *args, **kwargs)
+        except Http404:
+            # If the document version doesn't exist, try to create one
+            document_version, error_response = self._create_document_version_if_not_exists(request, kwargs.get('pk'))
+            if document_version:
+                # Update the document version with the request data
+                serializer = self.get_serializer(document_version, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                self.perform_update(serializer)
+                return Response(serializer.data)
+            else:
+                return error_response
+
+    def perform_update(self, serializer):
+        """
+        Custom perform_update method that creates a new version instead of updating the existing one
+        when changes are detected.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Get the original instance
+        instance = serializer.instance
+
+        # Check if there are actual changes to the document
+        has_changes = False
+        for field_name, new_value in serializer.validated_data.items():
+            # Skip status-related fields as they don't constitute content changes
+            if field_name in ['status', 'status_date', 'status_user']:
+                continue
+
+            # Get the original value
+            original_value = getattr(instance, field_name)
+
+            # Compare the values
+            if original_value != new_value:
+                has_changes = True
+                logger.info(f"Field '{field_name}' changed from '{original_value}' to '{new_value}'")
+                break
+
+        # If there are changes, create a new version
+        if has_changes:
+            logger.info(f"Changes detected in document version {instance.id}, creating a new version")
+
+            # Get the publication
+            publication = instance.publication
+
+            # Set the version number automatically
+            latest_version = publication.document_versions.order_by('-version_number').first()
+            version_number = latest_version.version_number + 1
+
+            # Generate a DOI for the new document version
+            from core.doi import DOIService
+            version_doi = DOIService.generate_doi(entity_type='document_version', entity_id=f"{publication.id}.{version_number}")
+
+            # Create a new document version with the updated data
+            new_instance = DocumentVersion.objects.create(
+                publication=publication,
+                version_number=version_number,
+                doi=version_doi,
+                content=serializer.validated_data.get('content', instance.content),
+                technical_abstract=serializer.validated_data.get('technical_abstract', instance.technical_abstract),
+                non_technical_abstract=serializer.validated_data.get('non_technical_abstract', instance.non_technical_abstract),
+                introduction=serializer.validated_data.get('introduction', instance.introduction),
+                methodology=serializer.validated_data.get('methodology', instance.methodology),
+                main_text=serializer.validated_data.get('main_text', instance.main_text),
+                conclusion=serializer.validated_data.get('conclusion', instance.conclusion),
+                author_contributions=serializer.validated_data.get('author_contributions', instance.author_contributions),
+                conflicts_of_interest=serializer.validated_data.get('conflicts_of_interest', instance.conflicts_of_interest),
+                acknowledgments=serializer.validated_data.get('acknowledgments', instance.acknowledgments),
+                funding=serializer.validated_data.get('funding', instance.funding),
+                references=serializer.validated_data.get('references', instance.references),
+                reviewer_response=serializer.validated_data.get('reviewer_response', instance.reviewer_response),
+                metadata=serializer.validated_data.get('metadata', instance.metadata),
+                release_date=serializer.validated_data.get('release_date', instance.release_date),
+                status=serializer.validated_data.get('status', instance.status),
+                status_user=self.request.user,
+                status_date=timezone.now()
+            )
+
+            # Copy authors from the original version
+            for author in instance.authors.all():
+                Author.objects.create(
+                    document_version=new_instance,
+                    user=author.user,
+                    name=author.name,
+                    address=author.address,
+                    institution=author.institution,
+                    email=author.email,
+                    orcid=author.orcid,
+                    is_corresponding=author.is_corresponding,
+                    order=author.order
+                )
+
+            # Copy figures from the original version
+            for figure in instance.figures.all():
+                Figure.objects.create(
+                    document_version=new_instance,
+                    figure_number=figure.figure_number,
+                    title=figure.title,
+                    caption=figure.caption,
+                    image=figure.image
+                )
+
+            # Copy tables from the original version
+            for table in instance.tables.all():
+                Table.objects.create(
+                    document_version=new_instance,
+                    table_number=table.table_number,
+                    title=table.title,
+                    caption=table.caption,
+                    content=table.content
+                )
+
+            # Copy keywords from the original version
+            for keyword in instance.keywords.all():
+                Keyword.objects.create(
+                    document_version=new_instance,
+                    keyword=keyword.keyword
+                )
+
+            # Copy attachments from the original version
+            for attachment in instance.attachments.all():
+                Attachment.objects.create(
+                    document_version=new_instance,
+                    title=attachment.title,
+                    description=attachment.description,
+                    file=attachment.file,
+                    file_type=attachment.file_type
+                )
+
+            # Update the serializer instance to the new version
+            serializer.instance = new_instance
+
+            logger.info(f"Created new document version {new_instance.id} with version number {version_number}")
+
+            return new_instance
+        else:
+            # If there are no changes, update the existing version
+            logger.info(f"No changes detected in document version {instance.id}, updating existing version")
+            return super().perform_update(serializer)
+
     def perform_create(self, serializer):
+        # Get the publication ID from the request data or URL parameters
+        publication_id = self.request.data.get('publication') or self.kwargs.get('publication_id')
+
+        # If publication_id is not provided, raise an error
+        if not publication_id:
+            from core.exceptions import format_error_response
+            raise serializers.ValidationError({'publication': ['This field is required.']})
+
+        # Get the publication object
+        publication = get_object_or_404(Publication, pk=publication_id)
+
         # Set the version number automatically
-        publication = get_object_or_404(Publication, pk=self.request.data.get('publication'))
         latest_version = publication.document_versions.order_by('-version_number').first()
         version_number = 1
         if latest_version:
@@ -176,10 +707,25 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
 
         # Save the document version
         document_version = serializer.save(
+            publication=publication,
             version_number=version_number,
             status_user=self.request.user,
             status_date=timezone.now()
         )
+
+        # Automatically create an author entry for the user who created the document version
+        # if no authors are specified in the request
+        if not document_version.authors.exists():
+            Author.objects.create(
+                document_version=document_version,
+                user=self.request.user,
+                name=self.request.user.get_full_name() or self.request.user.username,
+                email=self.request.user.email,
+                institution=getattr(self.request.user, 'affiliation', None),
+                orcid=getattr(self.request.user, 'orcid', None),
+                is_corresponding=True,
+                order=0
+            )
 
         # Generate AI keywords for the new document version
         try:
@@ -209,13 +755,15 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
         """
         document = self.get_object()
 
+        from core.exceptions import format_error_response
+
         # Check if the user is an author
         if not document.authors.filter(user=request.user).exists():
-            return Response({'detail': 'Only authors can submit for review.'}, status=status.HTTP_403_FORBIDDEN)
+            return format_error_response('Only authors can submit for review.', status.HTTP_403_FORBIDDEN)
 
         # Check if the document is in draft status
         if document.status != 'draft':
-            return Response({'detail': 'Only draft documents can be submitted for review.'}, status=status.HTTP_400_BAD_REQUEST)
+            return format_error_response('Only draft documents can be submitted for review.')
 
         # Update the status
         document.status = 'submitted'
@@ -247,7 +795,8 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
             ai_model = AIModel.objects.filter(is_active=True).first()
 
             if not ai_model:
-                return Response({'detail': 'No active AI model found.'}, status=status.HTTP_400_BAD_REQUEST)
+                from core.exceptions import format_error_response
+                return format_error_response('No active AI model found.')
 
             # Generate keywords using AI
             keywords = OpenAIService.generate_keywords(
@@ -263,7 +812,8 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
         except Exception as e:
-            return Response({'detail': f'Error generating keywords: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            from core.exceptions import format_error_response
+            return format_error_response(f'Error generating keywords: {str(e)}', status.HTTP_500_INTERNAL_SERVER_ERROR, exc=e)
 
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
@@ -272,13 +822,15 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
         """
         document = self.get_object()
 
+        from core.exceptions import format_error_response
+
         # Check if the user is the editorial board member
         if document.publication.editorial_board != request.user:
-            return Response({'detail': 'Only editorial board members can publish documents.'}, status=status.HTTP_403_FORBIDDEN)
+            return format_error_response('Only editorial board members can publish documents.', status.HTTP_403_FORBIDDEN)
 
         # Check if the document is in accepted status
         if document.status != 'accepted':
-            return Response({'detail': 'Only accepted documents can be published.'}, status=status.HTTP_400_BAD_REQUEST)
+            return format_error_response('Only accepted documents can be published.')
 
         # Update the status
         document.status = 'published'
@@ -422,13 +974,15 @@ class ReviewProcessViewSet(viewsets.ModelViewSet):
         """
         review_process = self.get_object()
 
+        from core.exceptions import format_error_response
+
         # Check if the user is the editorial board member
         if review_process.document_version.publication.editorial_board != request.user:
-            return Response({'detail': 'Only editorial board members can complete reviews.'}, status=status.HTTP_403_FORBIDDEN)
+            return format_error_response('Only editorial board members can complete reviews.', status.HTTP_403_FORBIDDEN)
 
         # Check if the review is in progress
         if review_process.status != 'in_progress':
-            return Response({'detail': 'Only in-progress reviews can be completed.'}, status=status.HTTP_400_BAD_REQUEST)
+            return format_error_response('Only in-progress reviews can be completed.')
 
         # Update the status
         review_process.status = 'completed'
@@ -493,13 +1047,15 @@ class ReviewerViewSet(viewsets.ModelViewSet):
         """
         reviewer = self.get_object()
 
+        from core.exceptions import format_error_response
+
         # Check if the user is the reviewer
         if reviewer.user != request.user:
-            return Response({'detail': 'Only the assigned reviewer can accept the invitation.'}, status=status.HTTP_403_FORBIDDEN)
+            return format_error_response('Only the assigned reviewer can accept the invitation.', status.HTTP_403_FORBIDDEN)
 
         # Check if the invitation is still pending
         if reviewer.accepted_at is not None:
-            return Response({'detail': 'This invitation has already been responded to.'}, status=status.HTTP_400_BAD_REQUEST)
+            return format_error_response('This invitation has already been responded to.')
 
         # Update the reviewer
         reviewer.accepted_at = timezone.now()
@@ -522,13 +1078,15 @@ class ReviewerViewSet(viewsets.ModelViewSet):
         """
         reviewer = self.get_object()
 
+        from core.exceptions import format_error_response
+
         # Check if the user is the reviewer
         if reviewer.user != request.user:
-            return Response({'detail': 'Only the assigned reviewer can decline the invitation.'}, status=status.HTTP_403_FORBIDDEN)
+            return format_error_response('Only the assigned reviewer can decline the invitation.', status.HTTP_403_FORBIDDEN)
 
         # Check if the invitation is still pending
         if reviewer.accepted_at is not None:
-            return Response({'detail': 'This invitation has already been responded to.'}, status=status.HTTP_400_BAD_REQUEST)
+            return format_error_response('This invitation has already been responded to.')
 
         # Update the reviewer
         reviewer.is_active = False
@@ -544,13 +1102,15 @@ class ReviewerViewSet(viewsets.ModelViewSet):
         """
         reviewer = self.get_object()
 
+        from core.exceptions import format_error_response
+
         # Check if the user is the reviewer
         if reviewer.user != request.user:
-            return Response({'detail': 'Only the assigned reviewer can complete the review.'}, status=status.HTTP_403_FORBIDDEN)
+            return format_error_response('Only the assigned reviewer can complete the review.', status.HTTP_403_FORBIDDEN)
 
         # Check if the reviewer has accepted the invitation
         if not reviewer.accepted_at:
-            return Response({'detail': 'You must accept the invitation before completing the review.'}, status=status.HTTP_400_BAD_REQUEST)
+            return format_error_response('You must accept the invitation before completing the review.')
 
         # Update the reviewer
         reviewer.completed_at = timezone.now()
@@ -901,10 +1461,8 @@ def public_document_version(request, document_version_id):
         return Response(serializer.data)
 
     except DocumentVersion.DoesNotExist:
-        return Response(
-            {'detail': 'Document version not found or not published.'},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        from core.exceptions import format_error_response
+        return format_error_response('Document version not found or not published.', status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['GET'])

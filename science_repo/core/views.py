@@ -69,7 +69,15 @@ def login_view(request):
                 'user': UserSerializer(user).data
             })
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # Format errors as {"error": "Error description"}
+    error_messages = []
+    for field, errors in serializer.errors.items():
+        for error in errors:
+            error_messages.append(f"{error}")
+
+    error_message = " ".join(error_messages)
+    return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -234,7 +242,7 @@ def orcid_callback(request):
         # Assign user to the readers group if created
         if created:
             from django.contrib.auth.models import Group
-            readers_group = Group.objects.get(name='readers')
+            readers_group, created_group = Group.objects.get_or_create(name='readers')
             user.groups.add(readers_group)
 
         # Create aliases for other names
@@ -446,7 +454,7 @@ def register_view(request):
         user = serializer.save()
 
         # Assign user to the readers group
-        readers_group = Group.objects.get(name='readers')
+        readers_group, created = Group.objects.get_or_create(name='readers')
         user.groups.add(readers_group)
 
         # Generate JWT tokens
@@ -462,7 +470,14 @@ def register_view(request):
             'user': UserSerializer(user).data
         }, status=status.HTTP_201_CREATED)
 
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # Format errors as {"error": "Error description"}
+    error_messages = []
+    for field, errors in serializer.errors.items():
+        for error in errors:
+            error_messages.append(f"{error}")
+
+    error_message = " ".join(error_messages)
+    return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @swagger_auto_schema(

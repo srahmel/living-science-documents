@@ -36,6 +36,9 @@ class PublicationModelTest(TestCase):
         self.assertEqual(self.publication.editorial_board, self.user)
         self.assertIsNotNone(self.publication.created_at)
 
+        # Note: In the actual API, a draft version would be automatically created,
+        # but since we're using the model directly here, no version is created.
+
     def test_publication_str_method(self):
         """Test the string representation of a publication"""
         expected_str = self.publication_data['title']
@@ -264,6 +267,12 @@ class PublicationAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
 
+        # Check that the new fields are present in the response
+        publication = response.data['results'][0]
+        self.assertIn('authors', publication)
+        self.assertIn('created_by', publication)
+        self.assertIn('metadata', publication)
+
     def test_retrieve_publication_anonymous(self):
         """Test that anonymous users can retrieve a publication"""
         response = self.client.get(f"{self.publications_url}{self.publication.id}/")
@@ -284,12 +293,25 @@ class PublicationAPITest(APITestCase):
         """Test that regular users can create a publication"""
         self.client.force_authenticate(user=self.user)
         new_publication_data = {
-            'meta_doi': '10.1234/test.2023.002',
-            'title': 'New Publication',
-            'short_title': 'New Pub'
+            'meta_doi': '10.1234/test.2023.003',  # Use a different DOI to avoid conflicts
+            'title': 'New Publication by Regular User',
+            'short_title': 'New Pub User'
         }
         response = self.client.post(self.publications_url, new_publication_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Check that the publication was created
+        publication = Publication.objects.get(meta_doi='10.1234/test.2023.003')
+        self.assertIsNotNone(publication)
+
+        # Check that a draft version was automatically created
+        versions = publication.document_versions.all()
+        self.assertEqual(versions.count(), 1)
+        self.assertEqual(versions.first().status, 'draft')
+        self.assertEqual(versions.first().version_number, 1)
+
+        # Check that the current user is set as the author
+        self.assertTrue(versions.first().authors.filter(user=self.user).exists())
 
     def test_create_publication_admin(self):
         """Test that admin users can create a publication"""
@@ -302,7 +324,19 @@ class PublicationAPITest(APITestCase):
         response = self.client.post(self.publications_url, new_publication_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['meta_doi'], new_publication_data['meta_doi'])
-        self.assertTrue(Publication.objects.filter(meta_doi='10.1234/test.2023.002').exists())
+
+        # Check that the publication was created
+        publication = Publication.objects.get(meta_doi='10.1234/test.2023.002')
+        self.assertIsNotNone(publication)
+
+        # Check that a draft version was automatically created
+        versions = publication.document_versions.all()
+        self.assertEqual(versions.count(), 1)
+        self.assertEqual(versions.first().status, 'draft')
+        self.assertEqual(versions.first().version_number, 1)
+
+        # Check that the current user is set as the author
+        self.assertTrue(versions.first().authors.filter(user=self.admin).exists())
 
     def test_update_publication_admin(self):
         """Test that admin users can update a publication"""
@@ -337,6 +371,70 @@ class PublicationAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['version_number'], self.version.version_number)
         self.assertEqual(response.data['doi'], self.version.doi)
+
+    def test_current_version_endpoint_author_access(self):
+        """Test that authors can access the full version details even if there's no published version"""
+        # Create a new publication
+        publication = Publication.objects.create(
+            meta_doi='10.1234/test.2023.003',
+            title='Author Access Test Publication',
+            short_title='Author Access Test',
+            editorial_board=self.admin
+        )
+
+        # Create an author user
+        author = User.objects.create_user(
+            username='authoruser',
+            email='author@example.com',
+            password='authorpassword123'
+        )
+
+        # Create a draft version (not published)
+        draft_version = DocumentVersion.objects.create(
+            publication=publication,
+            version_number=1,
+            status='draft',
+            status_date=timezone.now(),
+            status_user=author,
+            technical_abstract='Draft abstract',
+            introduction='Draft introduction',
+            methodology='Draft methodology',
+            main_text='Draft main text',
+            conclusion='Draft conclusion',
+            author_contributions='Draft author contributions',
+            references='Draft references',
+            doi='10.1234/test.2023.003.v1'
+        )
+
+        # Add author to the draft version
+        Author.objects.create(
+            document_version=draft_version,
+            user=author,
+            name='Author Name',
+            email='author@example.com',
+            institution='Test Institution',
+            is_corresponding=True
+        )
+
+        # Test anonymous access (should fail as there's no published version)
+        response = self.client.get(f"{self.publications_url}{publication.id}/current_version/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Test author access (should succeed and return the draft version)
+        self.client.force_authenticate(user=author)
+        response = self.client.get(f"{self.publications_url}{publication.id}/current_version/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['version_number'], draft_version.version_number)
+        self.assertEqual(response.data['doi'], draft_version.doi)
+        self.assertEqual(response.data['technical_abstract'], draft_version.technical_abstract)
+
+        # Verify that all fields needed for editing are present
+        self.assertIn('content', response.data)
+        self.assertIn('introduction', response.data)
+        self.assertIn('methodology', response.data)
+        self.assertIn('main_text', response.data)
+        self.assertIn('conclusion', response.data)
+        self.assertIn('author_contributions', response.data)
 
 
 class DocumentVersionAPITest(APITestCase):
@@ -433,7 +531,6 @@ class DocumentVersionAPITest(APITestCase):
         self.client.force_authenticate(user=self.author)
         new_version_data = {
             'publication': self.publication.id,
-            'version_number': 2,  # Add version_number field
             'content': 'New content',
             'technical_abstract': 'New abstract',
             'introduction': 'New introduction',
@@ -456,17 +553,34 @@ class DocumentVersionAPITest(APITestCase):
         ).exists())
 
     def test_update_version_author(self):
-        """Test that authors can update their document version"""
+        """Test that authors can update their document version, creating a new version"""
         self.client.force_authenticate(user=self.author)
         update_data = {
             'technical_abstract': 'Updated abstract',
             'reviewer_response': 'Response to reviewer comments addressing all concerns.'
         }
+
+        # Get the initial version count
+        initial_version_count = DocumentVersion.objects.filter(publication=self.publication).count()
+
         response = self.client.patch(f"{self.versions_url}{self.version.id}/", update_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that a new version was created
+        self.assertEqual(DocumentVersion.objects.filter(publication=self.publication).count(), initial_version_count + 1)
+
+        # Get the new version (should be version_number = 2)
+        new_version = DocumentVersion.objects.filter(publication=self.publication, version_number=2).first()
+        self.assertIsNotNone(new_version)
+
+        # Check that the new version has the updated data
+        self.assertEqual(new_version.technical_abstract, update_data['technical_abstract'])
+        self.assertEqual(new_version.reviewer_response, update_data['reviewer_response'])
+
+        # Check that the original version is unchanged
         self.version.refresh_from_db()
-        self.assertEqual(self.version.technical_abstract, update_data['technical_abstract'])
-        self.assertEqual(self.version.reviewer_response, update_data['reviewer_response'])
+        self.assertNotEqual(self.version.technical_abstract, update_data['technical_abstract'])
+        self.assertNotEqual(self.version.reviewer_response, update_data['reviewer_response'])
 
     def test_update_version_non_author(self):
         """Test that non-authors cannot update a document version"""
