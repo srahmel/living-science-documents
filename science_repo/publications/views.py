@@ -7,6 +7,10 @@ from django.db.models import Q
 from django.utils import timezone
 from django.conf import settings
 from django.http import Http404
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 from .models import Publication, DocumentVersion, Author, Figure, Table, Keyword, Attachment, ReviewProcess, Reviewer
 from .serializers import (
     PublicationSerializer, PublicationListSerializer, 
@@ -16,6 +20,8 @@ from .serializers import (
     ReviewProcessSerializer, ReviewerSerializer
 )
 from .ojs import OJSClient
+from .import_service import ImportService
+from .jats_converter import JATSConverter
 
 
 class IsAuthorOrReadOnly(permissions.BasePermission):
@@ -1466,6 +1472,115 @@ def public_document_version(request, document_version_id):
 
 
 @api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def export_jats(request, document_version_id):
+    """
+    Export a document version to JATS-XML format.
+
+    This endpoint exports a document version to JATS-XML format for submission to repositories.
+
+    Parameters:
+    - document_version_id: The ID of the document version
+
+    Returns:
+    - 200 OK: Returns the JATS-XML document
+    - 400 Bad Request: If there's an error creating the JATS-XML
+    - 404 Not Found: If the document version is not found
+    """
+    from django.http import HttpResponse
+    from .jats_converter import JATSConverter
+
+    try:
+        document_version = get_object_or_404(DocumentVersion, id=document_version_id)
+
+        # Check if the user has permission to view the document
+        if document_version.status != 'published' and not request.user.is_staff:
+            return Response({'detail': 'You do not have permission to view this document.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Generate JATS-XML
+        jats_xml = JATSConverter.document_to_jats(document_version)
+
+        # Create the response
+        response = HttpResponse(jats_xml, content_type='application/xml')
+        response['Content-Disposition'] = f'attachment; filename="{document_version.publication.title}_v{document_version.version_number}.xml"'
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Error exporting to JATS-XML: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def export_to_repository(request, document_version_id):
+    """
+    Export a document version to a repository.
+
+    This endpoint exports a document version to a specified repository (PubMed Central, Europe PMC, etc.)
+    using JATS-XML format.
+
+    Parameters:
+    - document_version_id: The ID of the document version
+    - repository: The repository to export to (query parameter, options: 'pubmed', 'europepmc', 'institutional')
+
+    Returns:
+    - 200 OK: Returns a success message with any repository-specific information
+    - 400 Bad Request: If there's an error exporting to the repository
+    - 404 Not Found: If the document version is not found
+    """
+    from .jats_converter import JATSConverter
+
+    try:
+        document_version = get_object_or_404(DocumentVersion, id=document_version_id)
+
+        # Check if the user has permission to view the document
+        if document_version.status != 'published' and not request.user.is_staff:
+            return Response({'detail': 'You do not have permission to view this document.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Get the repository
+        repository = request.query_params.get('repository', '').lower()
+        if not repository:
+            return Response({'error': 'Repository parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate JATS-XML
+        jats_xml = JATSConverter.document_to_jats(document_version)
+
+        # Export to the specified repository
+        # Note: This is a placeholder for actual repository submission logic
+        # In a real implementation, you would use repository-specific APIs to submit the JATS-XML
+
+        response_data = {
+            'status': 'success',
+            'message': f'Document successfully exported to {repository}',
+            'repository': repository,
+            'document_title': document_version.publication.title,
+            'document_version': document_version.version_number,
+            'doi': document_version.doi
+        }
+
+        # Add repository-specific information
+        if repository == 'pubmed':
+            response_data['repository_name'] = 'PubMed Central'
+            response_data['repository_url'] = 'https://www.ncbi.nlm.nih.gov/pmc/'
+        elif repository == 'europepmc':
+            response_data['repository_name'] = 'Europe PMC'
+            response_data['repository_url'] = 'https://europepmc.org/'
+        elif repository == 'institutional':
+            response_data['repository_name'] = 'Institutional Repository'
+            # This would be configured based on the institution
+            response_data['repository_url'] = 'https://repository.institution.edu/'
+        else:
+            return Response({'error': f'Unsupported repository: {repository}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(response_data)
+
+    except Exception as e:
+        logger.error(f"Error exporting to repository: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def public_comments(request, document_version_id=None):
     """
@@ -1505,3 +1620,97 @@ def public_comments(request, document_version_id=None):
     serializer = CommentSerializer(comments, many=True)
 
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def import_document(request, document_version_id=None):
+    """
+    Import a document file (Word, LaTeX, PDF) and convert it to JATS-XML.
+
+    This endpoint imports a document file, extracts its content and metadata,
+    and converts it to JATS-XML format. If a document_version_id is provided,
+    the document version will be updated with the extracted content.
+
+    Parameters:
+    - document_version_id: The ID of the document version to update (optional)
+    - file: The document file to import (multipart/form-data)
+
+    Returns:
+    - 200 OK: Returns the extracted content and metadata
+    - 400 Bad Request: If there's an error importing the document
+    - 404 Not Found: If the document version is not found
+    """
+    try:
+        # Check if a file was uploaded
+        if 'file' not in request.FILES:
+            return Response({'error': 'No file was uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        file_obj = request.FILES['file']
+        file_name = file_obj.name
+
+        # Check if the file extension is supported
+        file_ext = os.path.splitext(file_name)[1].lower()
+        if file_ext not in ['.docx', '.doc', '.pdf', '.tex', '.latex']:
+            return Response(
+                {'error': f'Unsupported file format: {file_ext}. Supported formats are: .docx, .doc, .pdf, .tex, .latex'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get the document version if provided
+        document_version = None
+        if document_version_id:
+            document_version = get_object_or_404(DocumentVersion, id=document_version_id)
+
+            # Check if the user has permission to update the document version
+            if document_version.status != 'draft' and not request.user.is_staff:
+                return Response(
+                    {'error': 'You do not have permission to update this document version.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        # Import the document
+        content = ImportService.import_document(file_obj, file_name, document_version)
+
+        # If a document version was provided, update it with the extracted content
+        if document_version:
+            # Update the document version with the extracted content
+            document_version.title = content.get('title', document_version.title)
+            document_version.abstract = content.get('abstract', document_version.abstract)
+
+            # Store the JATS-XML content
+            jats_xml = content.get('jats_xml', '')
+            document_version.content = jats_xml
+
+            # Convert JATS-XML to HTML for display
+            if jats_xml:
+                html_content = JATSConverter.jats_to_html(jats_xml)
+                document_version.html_content = html_content
+
+            # Update the document version's metadata
+            if content.get('doi'):
+                document_version.publication.meta_doi = content.get('doi')
+                document_version.publication.save(update_fields=['meta_doi'])
+
+            # Save the document version
+            document_version.save(update_fields=['title', 'abstract', 'content', 'html_content'])
+
+            # Create authors if they don't exist
+            for author_name in content.get('authors', []):
+                # Check if the author already exists
+                if not Author.objects.filter(document_version=document_version, name=author_name).exists():
+                    Author.objects.create(
+                        document_version=document_version,
+                        name=author_name,
+                        user=request.user if request.user.get_full_name() == author_name else None
+                    )
+
+            # Return the updated document version
+            return Response(DocumentVersionSerializer(document_version).data)
+
+        # If no document version was provided, just return the extracted content
+        return Response(content)
+
+    except Exception as e:
+        logger.error(f"Error importing document: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

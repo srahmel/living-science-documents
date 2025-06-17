@@ -26,6 +26,11 @@ urlpatterns = [
     # Archive endpoints
     path('document-versions/<int:document_version_id>/pdf/', views.download_pdf, name='download-pdf'),
     path('document-versions/<int:document_version_id>/archive/', views.archive_document, name='archive-document'),
+    path('document-versions/<int:document_version_id>/jats/', views.export_jats, name='export-jats'),
+    path('document-versions/<int:document_version_id>/repository/', views.export_to_repository, name='export-to-repository'),
+    # Import endpoints
+    path('import-document/', views.import_document, name='import-document'),
+    path('document-versions/<int:document_version_id>/import/', views.import_document, name='import-document-version'),
     # Citation endpoints
     path('citation/formats/', views.get_citation_formats, name='citation-formats'),
     path('citation/styles/', views.get_citation_styles, name='citation-styles'),

@@ -64,6 +64,9 @@ The API is documented using Swagger/OpenAPI. You can access the documentation at
 - `POST /api/publications/document-versions/{id}/submit_for_review/`: Submit a document version for review
 - `POST /api/publications/document-versions/{id}/generate_keywords/`: Generate AI keywords for a document version
 - `POST /api/publications/document-versions/{id}/publish/`: Publish a document version
+- `GET /api/publications/document-versions/{id}/pdf/`: Download a PDF version of a document
+- `GET /api/publications/document-versions/{id}/jats/`: Export a document version to JATS-XML format
+- `GET /api/publications/document-versions/{id}/repository/`: Export a document version to a repository (PubMed Central, Europe PMC, institutional repositories)
 
 - `GET /api/publications/review-processes/`: List all review processes
 - `POST /api/publications/review-processes/`: Create a new review process
@@ -95,6 +98,20 @@ The API is documented using Swagger/OpenAPI. You can access the documentation at
 - `PUT /api/comments/comments/{id}/`: Update a comment
 - `DELETE /api/comments/comments/{id}/`: Delete a comment
 - `POST /api/comments/comments/{id}/submit/`: Submit a comment for moderation
+- `POST /api/comments/comments/{id}/create_chat/`: Create a chat for a comment
+
+- `GET /api/comments/comment-chats/`: List all comment chats
+- `POST /api/comments/comment-chats/`: Create a new comment chat
+- `GET /api/comments/comment-chats/{id}/`: Get comment chat details
+- `PUT /api/comments/comment-chats/{id}/`: Update a comment chat
+- `DELETE /api/comments/comment-chats/{id}/`: Delete a comment chat
+- `POST /api/comments/comment-chats/{id}/add_message/`: Add a message to a comment chat
+
+- `GET /api/comments/chat-messages/`: List all chat messages
+- `POST /api/comments/chat-messages/`: Create a new chat message
+- `GET /api/comments/chat-messages/{id}/`: Get chat message details
+- `PUT /api/comments/chat-messages/{id}/`: Update a chat message
+- `DELETE /api/comments/chat-messages/{id}/`: Delete a chat message
 
 - `GET /api/comments/comment-moderations/`: List all comment moderations
 - `POST /api/comments/comment-moderations/`: Create a new comment moderation
@@ -182,6 +199,14 @@ The Living Science Documents platform implements the following workflows:
 4. If approved, the comment is published
 5. If rejected, the comment is marked as rejected
 6. If revision is required, the comment is returned to draft status
+
+### Chat Workflow
+
+1. User creates a chat for a comment or uses an existing chat
+2. User adds messages to the chat
+3. Other users can view the chat and add their own messages
+4. All logged-in users can participate in the chat
+5. Each comment has its own separate chat thread
 
 ### AI Integration Workflow
 

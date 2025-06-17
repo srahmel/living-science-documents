@@ -4,11 +4,12 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
-from .models import CommentType, Comment, CommentAuthor, CommentReference, ConflictOfInterest, CommentModeration
+from .models import CommentType, Comment, CommentAuthor, CommentReference, ConflictOfInterest, CommentModeration, CommentChat, ChatMessage
 from .serializers import (
     CommentTypeSerializer, CommentSerializer, CommentListSerializer,
     CommentAuthorSerializer, CommentReferenceSerializer,
-    ConflictOfInterestSerializer, CommentModerationSerializer
+    ConflictOfInterestSerializer, CommentModerationSerializer,
+    CommentChatSerializer, ChatMessageSerializer
 )
 from publications.models import DocumentVersion
 
@@ -139,6 +140,32 @@ class CommentViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(comment)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def create_chat(self, request, pk=None):
+        """
+        Create a chat for a comment.
+        """
+        comment = self.get_object()
+
+        # Check if a chat already exists for this comment
+        if hasattr(comment, 'chat'):
+            return Response({'detail': 'Chat already exists for this comment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create a new chat for the comment
+        chat = CommentChat.objects.create(comment=comment)
+
+        # If an initial message is provided, add it to the chat
+        initial_message = request.data.get('initial_message')
+        if initial_message:
+            ChatMessage.objects.create(
+                chat=chat,
+                user=request.user,
+                content=initial_message
+            )
+
+        serializer = CommentChatSerializer(chat)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class CommentAuthorViewSet(viewsets.ModelViewSet):
@@ -308,3 +335,78 @@ class CommentModerationViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(moderation)
         return Response(serializer.data)
+
+
+class CommentChatViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for comment chats.
+    """
+    queryset = CommentChat.objects.all()
+    serializer_class = CommentChatSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Optionally filter comment chats by comment.
+        """
+        queryset = CommentChat.objects.all()
+
+        comment = self.request.query_params.get('comment', None)
+        if comment is not None:
+            queryset = queryset.filter(comment=comment)
+
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+    @action(detail=True, methods=['post'])
+    def add_message(self, request, pk=None):
+        """
+        Add a message to a comment chat.
+        """
+        chat = self.get_object()
+        content = request.data.get('content')
+
+        if not content:
+            return Response({'detail': 'Content is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        message = ChatMessage.objects.create(
+            chat=chat,
+            user=request.user,
+            content=content
+        )
+
+        # Update the chat's updated_at timestamp
+        chat.updated_at = timezone.now()
+        chat.save()
+
+        serializer = ChatMessageSerializer(message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ChatMessageViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for chat messages.
+    """
+    queryset = ChatMessage.objects.all()
+    serializer_class = ChatMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['created_at']
+    ordering = ['created_at']
+
+    def get_queryset(self):
+        """
+        Optionally filter chat messages by chat.
+        """
+        queryset = ChatMessage.objects.all()
+
+        chat = self.request.query_params.get('chat', None)
+        if chat is not None:
+            queryset = queryset.filter(chat=chat)
+
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

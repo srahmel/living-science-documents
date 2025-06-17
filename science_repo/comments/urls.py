@@ -9,6 +9,8 @@ router.register(r'comment-authors', views.CommentAuthorViewSet)
 router.register(r'comment-references', views.CommentReferenceViewSet)
 router.register(r'conflicts-of-interest', views.ConflictOfInterestViewSet)
 router.register(r'comment-moderations', views.CommentModerationViewSet)
+router.register(r'comment-chats', views.CommentChatViewSet)
+router.register(r'chat-messages', views.ChatMessageViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

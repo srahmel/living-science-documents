@@ -5,13 +5,50 @@ from publications.models import DocumentVersion
 
 User = get_user_model()
 
+class CommentChat(models.Model):
+    """
+    CommentChat model representing a chat thread for a comment.
+    Each comment can have one chat thread.
+    """
+    comment = models.OneToOneField('Comment', on_delete=models.CASCADE, related_name='chat')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Chat for {self.comment}"
+
+
+class ChatMessage(models.Model):
+    """
+    ChatMessage model representing a message in a comment chat.
+    """
+    chat = models.ForeignKey(CommentChat, on_delete=models.CASCADE, related_name='messages')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_messages')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Message by {self.user.get_full_name()} in {self.chat}"
+
+
 class CommentType(models.Model):
     """
     CommentType model representing the type of comment.
     Types include SC (Scientific Comment), rSC (Response to Scientific Comment),
     ER (Error Correction), AD (Additional Data), NP (New Publication).
     """
-    code = models.CharField(max_length=10, unique=True)
+    class CodeChoices(models.TextChoices):
+        SCIENTIFIC_COMMENT = 'SC', 'Scientific Comment'
+        RESPONSE_TO_SC = 'rSC', 'Response to Scientific Comment'
+        ERROR_CORRECTION = 'ER', 'Error Correction'
+        ADDITIONAL_DATA = 'AD', 'Additional Data'
+        NEW_PUBLICATION = 'NP', 'New Publication'
+
+    code = models.CharField(max_length=10, unique=True, choices=CodeChoices.choices)
     name = models.CharField(max_length=100)
     description = models.TextField()
     requires_doi = models.BooleanField(default=True)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CommentType, Comment, CommentAuthor, CommentReference, ConflictOfInterest, CommentModeration
+from .models import CommentType, Comment, CommentAuthor, CommentReference, ConflictOfInterest, CommentModeration, CommentChat, ChatMessage
 from django.contrib.auth import get_user_model
 from publications.serializers import DocumentVersionListSerializer
 
@@ -33,13 +33,13 @@ class ConflictOfInterestSerializer(serializers.ModelSerializer):
 class CommentModerationSerializer(serializers.ModelSerializer):
     """Serializer for the CommentModeration model"""
     moderator_details = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = CommentModeration
         fields = ['id', 'comment', 'moderator', 'moderation_date', 'decision', 
                   'decision_reason', 'moderator_details']
         read_only_fields = ['id', 'moderation_date']
-    
+
     def get_moderator_details(self, obj):
         return {
             'id': obj.moderator.id,
@@ -51,12 +51,12 @@ class CommentModerationSerializer(serializers.ModelSerializer):
 class CommentAuthorSerializer(serializers.ModelSerializer):
     """Serializer for the CommentAuthor model"""
     user_details = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = CommentAuthor
         fields = ['id', 'comment', 'user', 'is_corresponding', 'created_at', 'user_details']
         read_only_fields = ['id', 'created_at']
-    
+
     def get_user_details(self, obj):
         return {
             'id': obj.user.id,
@@ -77,7 +77,8 @@ class CommentSerializer(serializers.ModelSerializer):
     document_version_details = serializers.SerializerMethodField()
     parent_comment_details = serializers.SerializerMethodField()
     status_user_details = serializers.SerializerMethodField()
-    
+    chat_details = serializers.SerializerMethodField()
+
     class Meta:
         model = Comment
         fields = ['id', 'document_version', 'parent_comment', 'comment_type', 'content',
@@ -85,16 +86,81 @@ class CommentSerializer(serializers.ModelSerializer):
                   'status', 'created_at', 'updated_at', 'status_date', 'status_user',
                   'is_ai_generated', 'authors', 'references', 'conflict_of_interest',
                   'moderation', 'comment_type_details', 'document_version_details',
-                  'parent_comment_details', 'status_user_details']
+                  'parent_comment_details', 'status_user_details', 'chat_details']
         read_only_fields = ['id', 'created_at', 'updated_at', 'status_date', 'doi']
-    
+
+    def to_internal_value(self, data):
+        """
+        Handle the case where comment_type is provided as a string code instead of a primary key.
+        Maps string values to the appropriate enum value.
+        """
+        if 'comment_type' in data and isinstance(data['comment_type'], str):
+            # Make a mutable copy of the data
+            data = data.copy()
+
+            # Get the original comment_type string
+            comment_type_str = data['comment_type']
+
+            # Try direct lookup by code first (case insensitive)
+            try:
+                comment_type = CommentType.objects.get(code__iexact=comment_type_str)
+                data['comment_type'] = comment_type.id
+                return super().to_internal_value(data)
+            except CommentType.DoesNotExist:
+                # Continue with mapping if direct lookup fails
+                pass
+
+            # Convert to uppercase for mapping
+            comment_type_str = comment_type_str.upper()
+
+            # Map common variations to standard codes
+            mapping = {
+                'ERROR': CommentType.CodeChoices.ERROR_CORRECTION,
+                'ERRORCORRECTION': CommentType.CodeChoices.ERROR_CORRECTION,
+                'SCIENTIFIC': CommentType.CodeChoices.SCIENTIFIC_COMMENT,
+                'SCIENTIFICCOMMENT': CommentType.CodeChoices.SCIENTIFIC_COMMENT,
+                'RESPONSE': CommentType.CodeChoices.RESPONSE_TO_SC,
+                'RESPONSETOSCIENTIFICCOMMENT': CommentType.CodeChoices.RESPONSE_TO_SC,
+                'ADDITIONAL': CommentType.CodeChoices.ADDITIONAL_DATA,
+                'ADDITIONALDATA': CommentType.CodeChoices.ADDITIONAL_DATA,
+                'NEW': CommentType.CodeChoices.NEW_PUBLICATION,
+                'NEWPUBLICATION': CommentType.CodeChoices.NEW_PUBLICATION,
+            }
+
+            # Try to map the string to a standard code
+            mapped_code = None
+
+            # Check if it's a direct match with an enum value
+            for choice in CommentType.CodeChoices.values:
+                if comment_type_str == choice:
+                    mapped_code = choice
+                    break
+
+            # If not a direct match, check the mapping
+            if not mapped_code:
+                for key, value in mapping.items():
+                    if comment_type_str.replace(' ', '').replace('_', '').startswith(key):
+                        mapped_code = value
+                        break
+
+            if mapped_code:
+                try:
+                    # Try to get the CommentType by the mapped code
+                    comment_type = CommentType.objects.get(code=mapped_code)
+                    data['comment_type'] = comment_type.id
+                except CommentType.DoesNotExist:
+                    # If the code doesn't exist, let the default validation handle it
+                    pass
+
+        return super().to_internal_value(data)
+
     def get_comment_type_details(self, obj):
         return {
             'id': obj.comment_type.id,
             'code': obj.comment_type.code,
             'name': obj.comment_type.name
         }
-    
+
     def get_document_version_details(self, obj):
         return {
             'id': obj.document_version.id,
@@ -103,7 +169,7 @@ class CommentSerializer(serializers.ModelSerializer):
             'version_number': obj.document_version.version_number,
             'doi': obj.document_version.doi
         }
-    
+
     def get_parent_comment_details(self, obj):
         if obj.parent_comment:
             return {
@@ -112,7 +178,7 @@ class CommentSerializer(serializers.ModelSerializer):
                 'doi': obj.parent_comment.doi
             }
         return None
-    
+
     def get_status_user_details(self, obj):
         if obj.status_user:
             return {
@@ -121,7 +187,39 @@ class CommentSerializer(serializers.ModelSerializer):
                 'full_name': obj.status_user.get_full_name()
             }
         return None
-    
+
+    def get_chat_details(self, obj):
+        """
+        Get details about the chat associated with the comment, if one exists.
+        """
+        try:
+            if hasattr(obj, 'chat'):
+                chat = obj.chat
+                message_count = chat.messages.count()
+                latest_message = chat.messages.order_by('-created_at').first()
+
+                return {
+                    'id': chat.id,
+                    'created_at': chat.created_at,
+                    'updated_at': chat.updated_at,
+                    'message_count': message_count,
+                    'latest_message': {
+                        'id': latest_message.id,
+                        'content': latest_message.content[:50] + '...' if latest_message and len(latest_message.content) > 50 else latest_message.content if latest_message else None,
+                        'user': {
+                            'id': latest_message.user.id,
+                            'username': latest_message.user.username,
+                            'full_name': latest_message.user.get_full_name()
+                        } if latest_message else None,
+                        'created_at': latest_message.created_at if latest_message else None
+                    } if latest_message else None,
+                    'has_messages': message_count > 0
+                }
+            return None
+        except Exception:
+            # If there's any error, return None
+            return None
+
     def validate(self, data):
         """
         Validate that comments are in question form if required by the comment type.
@@ -129,13 +227,13 @@ class CommentSerializer(serializers.ModelSerializer):
         if 'content' in data and 'comment_type' in data:
             comment_type = data['comment_type']
             content = data['content'].strip()
-            
+
             # Check if SC or rSC comment is in question form
             if comment_type.code in ['SC', 'rSC'] and not content.endswith('?'):
                 raise serializers.ValidationError(
                     f"{comment_type.code} comments must be in question form (end with '?')"
                 )
-        
+
         return data
 
 
@@ -143,15 +241,52 @@ class CommentListSerializer(serializers.ModelSerializer):
     """Simplified serializer for listing comments"""
     comment_type_code = serializers.SerializerMethodField()
     author_count = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Comment
         fields = ['id', 'document_version', 'comment_type_code', 'content', 'doi',
                   'status', 'created_at', 'is_ai_generated', 'author_count']
         read_only_fields = ['id', 'created_at', 'doi']
-    
+
     def get_comment_type_code(self, obj):
         return obj.comment_type.code
-    
+
     def get_author_count(self, obj):
         return obj.authors.count()
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    """Serializer for the ChatMessage model"""
+    user_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChatMessage
+        fields = ['id', 'chat', 'user', 'content', 'created_at', 'updated_at', 'user_details']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_user_details(self, obj):
+        return {
+            'id': obj.user.id,
+            'username': obj.user.username,
+            'full_name': obj.user.get_full_name(),
+            'orcid': getattr(obj.user, 'orcid', None),
+            'affiliation': getattr(obj.user, 'affiliation', None)
+        }
+
+
+class CommentChatSerializer(serializers.ModelSerializer):
+    """Serializer for the CommentChat model"""
+    messages = ChatMessageSerializer(many=True, read_only=True)
+    comment_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CommentChat
+        fields = ['id', 'comment', 'created_at', 'updated_at', 'messages', 'comment_details']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_comment_details(self, obj):
+        return {
+            'id': obj.comment.id,
+            'comment_type': obj.comment.comment_type.code,
+            'content': obj.comment.content[:100] + '...' if len(obj.comment.content) > 100 else obj.comment.content
+        }

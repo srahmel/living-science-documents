@@ -59,6 +59,8 @@ class DocumentVersion(models.Model):
     version_number = models.PositiveIntegerField()
     doi = models.CharField(max_length=200, unique=True)
     content = models.TextField(blank=True, null=True)
+    html_content = models.TextField(blank=True, null=True, help_text="HTML version of the content for display")
+    original_file = models.CharField(max_length=500, blank=True, null=True, help_text="Path to the original imported file")
     technical_abstract = models.TextField(blank=True, null=True)
     non_technical_abstract = models.TextField(blank=True, null=True)
     introduction = models.TextField(blank=True, null=True)
