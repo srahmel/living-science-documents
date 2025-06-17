@@ -825,6 +825,8 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
     def publish(self, request, pk=None):
         """
         Publish a document version.
+
+        When a new version is published, discussions on previous versions are automatically closed.
         """
         document = self.get_object()
 
@@ -844,6 +846,103 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
         document.status_user = request.user
         document.release_date = timezone.now().date()
         document.save()
+
+        # Close discussions on previous versions of this publication
+        previous_versions = document.publication.document_versions.filter(
+            version_number__lt=document.version_number,
+            discussion_status='open'
+        )
+
+        for prev_version in previous_versions:
+            prev_version.discussion_status = 'closed'
+            prev_version.discussion_closed_date = timezone.now()
+            prev_version.discussion_closed_by = request.user
+            prev_version.save()
+
+            # Log the action
+            logger.info(
+                f"Discussions closed for {prev_version} due to new version {document.version_number} publication. "
+                f"Closed by {request.user.username}."
+            )
+
+        serializer = self.get_serializer(document)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def close_discussion(self, request, pk=None):
+        """
+        Close the discussion phase for a document version.
+
+        This endpoint allows moderators to manually close the discussion phase for a document version.
+        Only editorial board members or staff can close discussions.
+        """
+        document = self.get_object()
+
+        from core.exceptions import format_error_response
+
+        # Check if the user is the editorial board member or staff
+        if document.publication.editorial_board != request.user and not request.user.is_staff:
+            return format_error_response('Only editorial board members or staff can close discussions.', status.HTTP_403_FORBIDDEN)
+
+        # Check if the discussion is already closed
+        if document.discussion_status != 'open':
+            return format_error_response(f'Discussion is already {document.discussion_status}.', status.HTTP_400_BAD_REQUEST)
+
+        # Close the discussion
+        document.discussion_status = 'closed'
+        document.discussion_closed_date = timezone.now()
+        document.discussion_closed_by = request.user
+        document.save()
+
+        # Log the action
+        logger.info(
+            f"Discussions manually closed for {document} by {request.user.username}."
+        )
+
+        serializer = self.get_serializer(document)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def withdraw(self, request, pk=None):
+        """
+        Withdraw a document version.
+
+        This endpoint allows authors to withdraw their publication, which also closes the discussion phase.
+        Only authors or editorial board members can withdraw publications.
+        """
+        document = self.get_object()
+
+        from core.exceptions import format_error_response
+
+        # Check if the user is an author or the editorial board member
+        is_author = document.authors.filter(user=request.user).exists()
+        is_editorial = document.publication.editorial_board == request.user
+
+        if not (is_author or is_editorial or request.user.is_staff):
+            return format_error_response('Only authors, editorial board members, or staff can withdraw publications.', 
+                                        status.HTTP_403_FORBIDDEN)
+
+        # Check if the document is already withdrawn
+        if document.discussion_status == 'withdrawn':
+            return format_error_response('Publication is already withdrawn.', status.HTTP_400_BAD_REQUEST)
+
+        # Withdraw the publication and close discussions
+        document.discussion_status = 'withdrawn'
+        document.discussion_closed_date = timezone.now()
+        document.discussion_closed_by = request.user
+
+        # If the document is published, mark it as archived
+        if document.status == 'published':
+            document.status = 'archived'
+            document.status_date = timezone.now()
+            document.status_user = request.user
+
+        document.save()
+
+        # Log the action
+        logger.info(
+            f"Publication {document} withdrawn by {request.user.username}."
+        )
 
         serializer = self.get_serializer(document)
         return Response(serializer.data)
@@ -1587,11 +1686,13 @@ def public_comments(request, document_version_id=None):
     Get a list of public comments.
 
     This endpoint returns a list of published comments for public consumption.
+    Comments are only returned for document versions with open discussions.
 
     Parameters:
     - document_version_id: The ID of the document version (optional)
     - section: The section to filter by (query parameter)
     - limit: The maximum number of comments to return (query parameter, default: 10)
+    - include_closed: Whether to include comments from closed discussions (query parameter, default: false)
 
     Returns:
     - 200 OK: Returns the list of comments
@@ -1602,6 +1703,7 @@ def public_comments(request, document_version_id=None):
     # Get the query parameters
     section = request.query_params.get('section')
     limit = int(request.query_params.get('limit', 10))
+    include_closed = request.query_params.get('include_closed', 'false').lower() == 'true'
 
     # Get the comments
     comments = Comment.objects.filter(status='published')
@@ -1609,6 +1711,20 @@ def public_comments(request, document_version_id=None):
     # Apply filters
     if document_version_id:
         comments = comments.filter(document_version_id=document_version_id)
+
+        # Check if the document version exists and if discussions are open
+        try:
+            document_version = DocumentVersion.objects.get(id=document_version_id)
+            if document_version.discussion_status != 'open' and not include_closed:
+                # If discussions are closed and include_closed is false, return empty list
+                return Response([])
+        except DocumentVersion.DoesNotExist:
+            # If document version doesn't exist, return 404
+            return Response({'error': 'Document version not found.'}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        # Only include comments from document versions with open discussions
+        if not include_closed:
+            comments = comments.filter(document_version__discussion_status='open')
 
     if section:
         comments = comments.filter(document_version__publication__section=section)

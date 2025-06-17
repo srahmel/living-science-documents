@@ -55,6 +55,12 @@ class DocumentVersion(models.Model):
         ('archived', 'Archived'),
     ]
 
+    DISCUSSION_STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+        ('withdrawn', 'Withdrawn'),
+    ]
+
     publication = models.ForeignKey(Publication, on_delete=models.CASCADE, related_name='document_versions')
     version_number = models.PositiveIntegerField()
     doi = models.CharField(max_length=200, unique=True)
@@ -78,6 +84,9 @@ class DocumentVersion(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     status_date = models.DateTimeField(default=timezone.now)
     status_user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="status_document_versions")
+    discussion_status = models.CharField(max_length=20, choices=DISCUSSION_STATUS_CHOICES, default='open')
+    discussion_closed_date = models.DateTimeField(null=True, blank=True)
+    discussion_closed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="closed_discussions")
 
     class Meta:
         unique_together = ('publication', 'version_number')

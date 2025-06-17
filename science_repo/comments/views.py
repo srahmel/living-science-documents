@@ -101,6 +101,18 @@ class CommentViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
+        # Check if the document version has open discussions
+        document_version_id = serializer.validated_data.get('document_version').id
+        from publications.models import DocumentVersion
+        from rest_framework.exceptions import ValidationError
+
+        try:
+            document_version = DocumentVersion.objects.get(id=document_version_id)
+            if document_version.discussion_status != 'open':
+                raise ValidationError(f"Cannot create comments for this document version. Discussion status is '{document_version.discussion_status}'.")
+        except DocumentVersion.DoesNotExist:
+            raise ValidationError("Document version not found.")
+
         comment = serializer.save(status='draft')
 
         # Create a CommentAuthor entry for the current user
