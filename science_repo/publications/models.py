@@ -65,7 +65,6 @@ class DocumentVersion(models.Model):
     version_number = models.PositiveIntegerField()
     doi = models.CharField(max_length=200, unique=True)
     content = models.TextField(blank=True, null=True)
-    html_content = models.TextField(blank=True, null=True, help_text="HTML version of the content for display")
     original_file = models.CharField(max_length=500, blank=True, null=True, help_text="Path to the original imported file")
     technical_abstract = models.TextField(blank=True, null=True)
     non_technical_abstract = models.TextField(blank=True, null=True)
@@ -222,3 +221,39 @@ class Reviewer(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name()} reviewing {self.review_process.document_version}"
+
+
+class DocumentModerator(models.Model):
+    """
+    DocumentModerator model representing a moderator assigned to a document version.
+    Moderators can view and change status of submitted comments for assigned documents.
+    """
+    document_version = models.ForeignKey(DocumentVersion, on_delete=models.CASCADE, related_name='moderators')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='moderated_documents')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='assigned_moderators')
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('document_version', 'user')
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} moderating {self.document_version}"
+
+
+class DocumentReviewEditor(models.Model):
+    """
+    DocumentReviewEditor model representing a review editor assigned to a document version.
+    Review editors can view, review, and change status of submitted comments for assigned documents.
+    """
+    document_version = models.ForeignKey(DocumentVersion, on_delete=models.CASCADE, related_name='review_editors')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='edited_documents')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='assigned_editors')
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('document_version', 'user')
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} editing {self.document_version}"

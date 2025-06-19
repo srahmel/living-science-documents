@@ -239,11 +239,11 @@ def orcid_callback(request):
 
             user.save()
 
-        # Assign user to the readers group if created
+        # Assign user to the commentators group if created
         if created:
             from django.contrib.auth.models import Group
-            readers_group, created_group = Group.objects.get_or_create(name='readers')
-            user.groups.add(readers_group)
+            commentators_group, created_group = Group.objects.get_or_create(name='commentators')
+            user.groups.add(commentators_group)
 
         # Create aliases for other names
         from core.models import UserAlias
@@ -431,7 +431,7 @@ def register_view(request):
     Register a new user.
 
     This endpoint allows users to register with a username, password, and other required fields.
-    New users are automatically assigned to the 'readers' group.
+    New users are automatically assigned to the 'commentators' group.
 
     Parameters:
     - username: User's username
@@ -453,9 +453,9 @@ def register_view(request):
     if serializer.is_valid():
         user = serializer.save()
 
-        # Assign user to the readers group
-        readers_group, created = Group.objects.get_or_create(name='readers')
-        user.groups.add(readers_group)
+        # Assign user to the commentators group
+        commentators_group, created = Group.objects.get_or_create(name='commentators')
+        user.groups.add(commentators_group)
 
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)

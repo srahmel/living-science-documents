@@ -1,10 +1,11 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
 from django.utils import timezone
-from .models import CommentType, Comment, CommentAuthor, CommentReference, ConflictOfInterest, CommentModeration
+from .models import CommentType, Comment, CommentAuthor, CommentReference, ConflictOfInterest, CommentModeration, CommentChat, ChatMessage
 from publications.models import Publication, DocumentVersion, Author
 import json
 
@@ -285,6 +286,164 @@ class CommentReferenceModelTest(TestCase):
         self.assertEqual(str(self.reference), expected_str)
 
 
+class CommentChatModelTest(TestCase):
+    """Test the CommentChat model"""
+
+    def setUp(self):
+        # Create a user
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpassword123'
+        )
+
+        # Create a publication
+        self.publication = Publication.objects.create(
+            meta_doi='10.1234/test.2023.001',
+            title='Test Publication',
+            short_title='Test Pub',
+            editorial_board=self.user
+        )
+
+        # Create a document version
+        self.document_version = DocumentVersion.objects.create(
+            publication=self.publication,
+            version_number=1,
+            status='published',
+            status_date=timezone.now(),
+            status_user=self.user,
+            technical_abstract='Test abstract',
+            doi='10.1234/test.2023.001.v1',
+            release_date=timezone.now().date()
+        )
+
+        # Create a comment type
+        self.comment_type = CommentType.objects.create(
+            code='SC',
+            name='Scientific Comment',
+            description='A scientific comment on the document',
+            requires_doi=True
+        )
+
+        # Create a comment
+        self.comment = Comment.objects.create(
+            document_version=self.document_version,
+            comment_type=self.comment_type,
+            content='Is this methodology consistent with previous studies?',
+            status='published',
+            status_user=self.user,
+            doi='10.1234/comment.2023.001'
+        )
+
+        # Create a comment chat
+        self.chat = CommentChat.objects.create(
+            comment=self.comment
+        )
+
+    def test_comment_chat_creation(self):
+        """Test that a comment chat can be created"""
+        self.assertEqual(self.chat.comment, self.comment)
+        self.assertIsNotNone(self.chat.created_at)
+        self.assertIsNotNone(self.chat.updated_at)
+
+    def test_comment_chat_str_method(self):
+        """Test the string representation of a comment chat"""
+        expected_str = f"Chat for {self.comment}"
+        self.assertEqual(str(self.chat), expected_str)
+
+
+class ChatMessageModelTest(TestCase):
+    """Test the ChatMessage model"""
+
+    def setUp(self):
+        # Create a user
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpassword123',
+            first_name='Test',
+            last_name='User'
+        )
+
+        # Create a publication
+        self.publication = Publication.objects.create(
+            meta_doi='10.1234/test.2023.001',
+            title='Test Publication',
+            short_title='Test Pub',
+            editorial_board=self.user
+        )
+
+        # Create a document version
+        self.document_version = DocumentVersion.objects.create(
+            publication=self.publication,
+            version_number=1,
+            status='published',
+            status_date=timezone.now(),
+            status_user=self.user,
+            technical_abstract='Test abstract',
+            doi='10.1234/test.2023.001.v1',
+            release_date=timezone.now().date()
+        )
+
+        # Create a comment type
+        self.comment_type = CommentType.objects.create(
+            code='SC',
+            name='Scientific Comment',
+            description='A scientific comment on the document',
+            requires_doi=True
+        )
+
+        # Create a comment
+        self.comment = Comment.objects.create(
+            document_version=self.document_version,
+            comment_type=self.comment_type,
+            content='Is this methodology consistent with previous studies?',
+            status='published',
+            status_user=self.user,
+            doi='10.1234/comment.2023.001'
+        )
+
+        # Create a comment chat
+        self.chat = CommentChat.objects.create(
+            comment=self.comment
+        )
+
+        # Create a chat message
+        self.message_data = {
+            'chat': self.chat,
+            'user': self.user,
+            'content': 'This is a test message'
+        }
+        self.message = ChatMessage.objects.create(**self.message_data)
+
+    def test_chat_message_creation(self):
+        """Test that a chat message can be created"""
+        self.assertEqual(self.message.chat, self.chat)
+        self.assertEqual(self.message.user, self.user)
+        self.assertEqual(self.message.content, self.message_data['content'])
+        self.assertIsNotNone(self.message.created_at)
+        self.assertIsNotNone(self.message.updated_at)
+
+    def test_chat_message_str_method(self):
+        """Test the string representation of a chat message"""
+        expected_str = f"Message by {self.user.get_full_name()} in {self.chat}"
+        self.assertEqual(str(self.message), expected_str)
+
+    def test_chat_message_ordering(self):
+        """Test that chat messages are ordered by created_at"""
+        # Create a second message
+        message2 = ChatMessage.objects.create(
+            chat=self.chat,
+            user=self.user,
+            content='This is a second test message'
+        )
+
+        # Get all messages
+        messages = ChatMessage.objects.filter(chat=self.chat)
+        self.assertEqual(messages[0], self.message)  # First message first
+        self.assertEqual(messages[1], message2)
+
+
 class CommentAPITest(APITestCase):
     """Test the Comment API endpoints"""
 
@@ -312,6 +471,10 @@ class CommentAPITest(APITestCase):
             email='test@example.com',
             password='testpassword123'
         )
+
+        # Create commentators group and add user to it
+        self.commentators_group, created = Group.objects.get_or_create(name='commentators')
+        self.user.groups.add(self.commentators_group)
 
         # Create a publication
         self.publication = Publication.objects.create(

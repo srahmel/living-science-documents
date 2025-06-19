@@ -628,3 +628,347 @@ class DocumentVersionAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         draft_version.refresh_from_db()
         self.assertEqual(draft_version.status, 'submitted')
+
+
+class ReviewProcessModelTest(TestCase):
+    """Test the ReviewProcess model"""
+
+    def setUp(self):
+        # Create a user
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpassword123'
+        )
+
+        # Create a handling editor
+        self.editor = User.objects.create_user(
+            username='editor',
+            email='editor@example.com',
+            password='editorpassword123'
+        )
+
+        # Create a publication
+        self.publication = Publication.objects.create(
+            meta_doi='10.1234/test.2023.001',
+            title='Test Publication',
+            short_title='Test Pub',
+            editorial_board=self.user
+        )
+
+        # Create a document version
+        self.document_version = DocumentVersion.objects.create(
+            publication=self.publication,
+            version_number=1,
+            status='under_review',
+            status_date=timezone.now(),
+            status_user=self.user,
+            technical_abstract='Test abstract',
+            doi='10.1234/test.2023.001.v1',
+            release_date=timezone.now().date()
+        )
+
+        # Create a review process
+        self.review_process_data = {
+            'document_version': self.document_version,
+            'handling_editor': self.editor,
+            'status': 'in_progress',
+            'decision': 'Pending review completion'
+        }
+        self.review_process = ReviewProcess.objects.create(**self.review_process_data)
+
+    def test_review_process_creation(self):
+        """Test that a review process can be created"""
+        self.assertEqual(self.review_process.document_version, self.document_version)
+        self.assertEqual(self.review_process.handling_editor, self.editor)
+        self.assertEqual(self.review_process.status, self.review_process_data['status'])
+        self.assertEqual(self.review_process.decision, self.review_process_data['decision'])
+        self.assertIsNotNone(self.review_process.start_date)
+        self.assertIsNone(self.review_process.end_date)
+
+    def test_review_process_str_method(self):
+        """Test the string representation of a review process"""
+        expected_str = f"Review of {self.document_version}"
+        self.assertEqual(str(self.review_process), expected_str)
+
+    def test_review_process_completion(self):
+        """Test that a review process can be completed"""
+        # Update the review process to completed
+        self.review_process.status = 'completed'
+        self.review_process.end_date = timezone.now()
+        self.review_process.decision = 'Accept with minor revisions'
+        self.review_process.save()
+
+        # Refresh from database
+        self.review_process.refresh_from_db()
+
+        # Check that the fields were updated
+        self.assertEqual(self.review_process.status, 'completed')
+        self.assertIsNotNone(self.review_process.end_date)
+        self.assertEqual(self.review_process.decision, 'Accept with minor revisions')
+
+
+class ReviewerModelTest(TestCase):
+    """Test the Reviewer model"""
+
+    def setUp(self):
+        # Create a user
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpassword123',
+            first_name='Test',
+            last_name='User'
+        )
+
+        # Create a handling editor
+        self.editor = User.objects.create_user(
+            username='editor',
+            email='editor@example.com',
+            password='editorpassword123'
+        )
+
+        # Create a reviewer
+        self.reviewer_user = User.objects.create_user(
+            username='reviewer',
+            email='reviewer@example.com',
+            password='reviewerpassword123',
+            first_name='Review',
+            last_name='Expert'
+        )
+
+        # Create a publication
+        self.publication = Publication.objects.create(
+            meta_doi='10.1234/test.2023.001',
+            title='Test Publication',
+            short_title='Test Pub',
+            editorial_board=self.user
+        )
+
+        # Create a document version
+        self.document_version = DocumentVersion.objects.create(
+            publication=self.publication,
+            version_number=1,
+            status='under_review',
+            status_date=timezone.now(),
+            status_user=self.user,
+            technical_abstract='Test abstract',
+            doi='10.1234/test.2023.001.v1',
+            release_date=timezone.now().date()
+        )
+
+        # Create a review process
+        self.review_process = ReviewProcess.objects.create(
+            document_version=self.document_version,
+            handling_editor=self.editor,
+            status='in_progress'
+        )
+
+        # Create a reviewer
+        self.reviewer_data = {
+            'review_process': self.review_process,
+            'user': self.reviewer_user,
+            'is_active': True
+        }
+        self.reviewer = Reviewer.objects.create(**self.reviewer_data)
+
+    def test_reviewer_creation(self):
+        """Test that a reviewer can be created"""
+        self.assertEqual(self.reviewer.review_process, self.review_process)
+        self.assertEqual(self.reviewer.user, self.reviewer_user)
+        self.assertEqual(self.reviewer.is_active, self.reviewer_data['is_active'])
+        self.assertIsNotNone(self.reviewer.invited_at)
+        self.assertIsNone(self.reviewer.accepted_at)
+        self.assertIsNone(self.reviewer.completed_at)
+
+    def test_reviewer_str_method(self):
+        """Test the string representation of a reviewer"""
+        expected_str = f"{self.reviewer_user.get_full_name()} reviewing {self.review_process.document_version}"
+        self.assertEqual(str(self.reviewer), expected_str)
+
+    def test_reviewer_acceptance(self):
+        """Test that a reviewer can accept an invitation"""
+        # Update the reviewer to accepted
+        self.reviewer.accepted_at = timezone.now()
+        self.reviewer.save()
+
+        # Refresh from database
+        self.reviewer.refresh_from_db()
+
+        # Check that the fields were updated
+        self.assertIsNotNone(self.reviewer.accepted_at)
+        self.assertIsNone(self.reviewer.completed_at)
+
+    def test_reviewer_completion(self):
+        """Test that a reviewer can complete a review"""
+        # Update the reviewer to completed
+        self.reviewer.accepted_at = timezone.now() - timezone.timedelta(days=1)
+        self.reviewer.completed_at = timezone.now()
+        self.reviewer.save()
+
+        # Refresh from database
+        self.reviewer.refresh_from_db()
+
+        # Check that the fields were updated
+        self.assertIsNotNone(self.reviewer.accepted_at)
+        self.assertIsNotNone(self.reviewer.completed_at)
+        self.assertTrue(self.reviewer.completed_at > self.reviewer.accepted_at)
+
+
+class ExportFunctionalityTest(APITestCase):
+    """Test the export functionality"""
+
+    def setUp(self):
+        # Create a client
+        self.client = APIClient()
+
+        # Create admin user
+        self.admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='adminpassword123',
+            is_staff=True,
+            is_superuser=True
+        )
+
+        # Create regular user
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpassword123'
+        )
+
+        # Create a publication
+        self.publication = Publication.objects.create(
+            meta_doi='10.1234/test.2023.001',
+            title='Test Publication',
+            short_title='Test Pub',
+            editorial_board=self.admin
+        )
+
+        # Create a document version
+        self.document_version = DocumentVersion.objects.create(
+            publication=self.publication,
+            version_number=1,
+            status='published',
+            status_date=timezone.now(),
+            status_user=self.admin,
+            technical_abstract='Test abstract',
+            introduction='Test introduction',
+            methodology='Test methodology',
+            main_text='Test main text',
+            conclusion='Test conclusion',
+            author_contributions='Test author contributions',
+            references='Test references',
+            doi='10.1234/test.2023.001.v1',
+            release_date=timezone.now().date()
+        )
+
+    @patch('publications.archive.ArchiveService.create_pdf')
+    def test_download_pdf(self, mock_create_pdf):
+        """Test the download_pdf endpoint"""
+        from io import BytesIO
+
+        # Mock the create_pdf method to return a BytesIO object
+        pdf_buffer = BytesIO(b'PDF content')
+        mock_create_pdf.return_value = pdf_buffer
+
+        # Authenticate as a regular user
+        self.client.force_authenticate(user=self.user)
+
+        # Test the endpoint
+        response = self.client.get(f'/api/publications/document-versions/{self.document_version.id}/pdf/')
+
+        # Check that the response is successful
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that the content type is PDF
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+        # Check that the content disposition is correct
+        self.assertEqual(response['Content-Disposition'], f'attachment; filename="{self.publication.title}_v{self.document_version.version_number}.pdf"')
+
+        # Check that the create_pdf method was called with the correct arguments
+        mock_create_pdf.assert_called_once_with(self.document_version, True)
+
+    @patch('publications.jats_converter.JATSConverter.document_to_jats')
+    def test_export_jats(self, mock_document_to_jats):
+        """Test the export_jats endpoint"""
+        # Mock the document_to_jats method to return XML content
+        mock_document_to_jats.return_value = '<article>JATS XML content</article>'
+
+        # Authenticate as a regular user
+        self.client.force_authenticate(user=self.user)
+
+        # Test the endpoint
+        response = self.client.get(f'/api/publications/document-versions/{self.document_version.id}/jats/')
+
+        # Check that the response is successful
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that the content type is XML
+        self.assertEqual(response['Content-Type'], 'application/xml')
+
+        # Check that the content disposition is correct
+        self.assertEqual(response['Content-Disposition'], f'attachment; filename="{self.publication.title}_v{self.document_version.version_number}.xml"')
+
+        # Check that the document_to_jats method was called with the correct arguments
+        mock_document_to_jats.assert_called_once_with(self.document_version)
+
+    @patch('publications.jats_converter.JATSConverter.document_to_jats')
+    def test_export_to_repository(self, mock_document_to_jats):
+        """Test the export_to_repository endpoint"""
+        # Mock the document_to_jats method to return XML content
+        mock_document_to_jats.return_value = '<article>JATS XML content</article>'
+
+        # Authenticate as a regular user
+        self.client.force_authenticate(user=self.user)
+
+        # Test the endpoint with PubMed repository
+        response = self.client.get(f'/api/publications/document-versions/{self.document_version.id}/repository/?repository=pubmed')
+
+        # Check that the response is successful
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check that the response contains the expected data
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['repository'], 'pubmed')
+        self.assertEqual(response.data['repository_name'], 'PubMed Central')
+        self.assertEqual(response.data['document_title'], self.publication.title)
+        self.assertEqual(response.data['document_version'], self.document_version.version_number)
+        self.assertEqual(response.data['doi'], self.document_version.doi)
+
+        # Check that the document_to_jats method was called with the correct arguments
+        mock_document_to_jats.assert_called_once_with(self.document_version)
+
+    @patch('publications.jats_converter.JATSConverter.document_to_jats')
+    def test_export_to_repository_invalid(self, mock_document_to_jats):
+        """Test the export_to_repository endpoint with an invalid repository"""
+        # Authenticate as a regular user
+        self.client.force_authenticate(user=self.user)
+
+        # Test the endpoint with an invalid repository
+        response = self.client.get(f'/api/publications/document-versions/{self.document_version.id}/repository/?repository=invalid')
+
+        # Check that the response is a bad request
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Check that the error message is correct
+        self.assertEqual(response.data['error'], 'Unsupported repository: invalid')
+
+        # Check that the document_to_jats method was called with the correct arguments
+        mock_document_to_jats.assert_called_once_with(self.document_version)
+
+    def test_export_endpoints_unauthenticated(self):
+        """Test that unauthenticated users cannot access export endpoints"""
+        # Test the download_pdf endpoint
+        response = self.client.get(f'/api/publications/document-versions/{self.document_version.id}/pdf/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Test the export_jats endpoint
+        response = self.client.get(f'/api/publications/document-versions/{self.document_version.id}/jats/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Test the export_to_repository endpoint
+        response = self.client.get(f'/api/publications/document-versions/{self.document_version.id}/repository/?repository=pubmed')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

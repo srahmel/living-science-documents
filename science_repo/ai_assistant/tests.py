@@ -355,6 +355,63 @@ class AIFeedbackModelTest(TestCase):
             )
 
 
+class AIPromptLogModelTest(TestCase):
+    """Test the AIPromptLog model"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpassword123',
+            first_name='Test',
+            last_name='User'
+        )
+
+        self.ai_model = AIModel.objects.create(
+            name='GPT-4',
+            version='1.0',
+            provider='OpenAI',
+            api_endpoint='https://api.openai.com/v1/chat/completions',
+            is_active=True
+        )
+
+        self.ai_prompt = AIPrompt.objects.create(
+            name='Scientific Question Generator',
+            description='Generates scientific questions based on document content',
+            prompt_template='Generate a scientific question about the following text: {{text}}',
+            ai_model=self.ai_model,
+            is_active=True,
+            created_by=self.user
+        )
+
+        self.prompt_log_data = {
+            'ai_model': self.ai_model,
+            'ai_prompt': self.ai_prompt,
+            'user': self.user,
+            'input_context': 'The methodology used in this study involves...',
+            'output_text': 'Is this methodology consistent with previous studies?',
+            'execution_time': 1.25,  # seconds
+            'token_count': 150
+        }
+        self.prompt_log = AIPromptLog.objects.create(**self.prompt_log_data)
+
+    def test_ai_prompt_log_creation(self):
+        """Test that an AI prompt log can be created"""
+        self.assertEqual(self.prompt_log.ai_model, self.ai_model)
+        self.assertEqual(self.prompt_log.ai_prompt, self.ai_prompt)
+        self.assertEqual(self.prompt_log.user, self.user)
+        self.assertEqual(self.prompt_log.input_context, self.prompt_log_data['input_context'])
+        self.assertEqual(self.prompt_log.output_text, self.prompt_log_data['output_text'])
+        self.assertEqual(self.prompt_log.execution_time, self.prompt_log_data['execution_time'])
+        self.assertEqual(self.prompt_log.token_count, self.prompt_log_data['token_count'])
+        self.assertIsNotNone(self.prompt_log.created_at)
+
+    def test_ai_prompt_log_str_method(self):
+        """Test the string representation of an AI prompt log"""
+        expected_str = f"Log for {self.ai_prompt} at {self.prompt_log.created_at}"
+        self.assertEqual(str(self.prompt_log), expected_str)
+
+
 class AIAssistantAPITest(APITestCase):
     """Test the AI Assistant API endpoints"""
 

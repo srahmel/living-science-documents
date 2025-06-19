@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
+from django.contrib.auth.models import Group
 from .models import CommentType, Comment, CommentAuthor, CommentReference, ConflictOfInterest, CommentModeration, CommentChat, ChatMessage
 from .serializers import (
     CommentTypeSerializer, CommentSerializer, CommentListSerializer,
@@ -12,6 +13,22 @@ from .serializers import (
     CommentChatSerializer, ChatMessageSerializer
 )
 from publications.models import DocumentVersion
+
+
+class IsCommentatorOrReadOnly(permissions.BasePermission):
+    """
+    Custom permission to only allow users with the 'commentators' role to create comments.
+    """
+    def has_permission(self, request, view):
+        # Read permissions are allowed to any request
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # Write permissions are only allowed to authenticated users in the 'commentators' group
+        if request.user.is_authenticated:
+            return request.user.groups.filter(name='commentators').exists()
+
+        return False
 
 
 class IsCommentAuthorOrReadOnly(permissions.BasePermission):
@@ -37,14 +54,67 @@ class IsCommentAuthorOrReadOnly(permissions.BasePermission):
 class IsModeratorOrReadOnly(permissions.BasePermission):
     """
     Custom permission to only allow moderators to moderate comments.
+    A user is considered a moderator for a comment if:
+    1. They are assigned as a moderator to the document version associated with the comment, or
+    2. They are a staff member
     """
     def has_object_permission(self, request, view, obj):
         # Read permissions are allowed to any request
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # Check if the user is a moderator (has moderated comments before)
-        return CommentModeration.objects.filter(moderator=request.user).exists()
+        # Staff members can always moderate
+        if request.user.is_staff:
+            return True
+
+        # Get the document version associated with the comment
+        if hasattr(obj, 'document_version'):
+            document_version = obj.document_version
+        elif hasattr(obj, 'comment') and hasattr(obj.comment, 'document_version'):
+            document_version = obj.comment.document_version
+        else:
+            return False
+
+        # Check if the user is assigned as a moderator to this document version
+        from publications.models import DocumentModerator
+        return DocumentModerator.objects.filter(
+            document_version=document_version,
+            user=request.user,
+            is_active=True
+        ).exists()
+
+
+class IsReviewEditorOrReadOnly(permissions.BasePermission):
+    """
+    Custom permission to only allow review editors to review comments.
+    A user is considered a review editor for a comment if:
+    1. They are assigned as a review editor to the document version associated with the comment, or
+    2. They are a staff member
+    """
+    def has_object_permission(self, request, view, obj):
+        # Read permissions are allowed to any request
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # Staff members can always review
+        if request.user.is_staff:
+            return True
+
+        # Get the document version associated with the comment
+        if hasattr(obj, 'document_version'):
+            document_version = obj.document_version
+        elif hasattr(obj, 'comment') and hasattr(obj.comment, 'document_version'):
+            document_version = obj.comment.document_version
+        else:
+            return False
+
+        # Check if the user is assigned as a review editor to this document version
+        from publications.models import DocumentReviewEditor
+        return DocumentReviewEditor.objects.filter(
+            document_version=document_version,
+            user=request.user,
+            is_active=True
+        ).exists()
 
 
 class CommentTypeViewSet(viewsets.ModelViewSet):
@@ -62,7 +132,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCommentAuthorOrReadOnly]
+    permission_classes = [IsCommentatorOrReadOnly, IsCommentAuthorOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['content', 'referenced_text', 'section_reference', 'doi']
     ordering_fields = ['created_at', 'updated_at', 'status_date']
@@ -186,7 +256,7 @@ class CommentAuthorViewSet(viewsets.ModelViewSet):
     """
     queryset = CommentAuthor.objects.all()
     serializer_class = CommentAuthorSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCommentAuthorOrReadOnly]
+    permission_classes = [IsCommentatorOrReadOnly, IsCommentAuthorOrReadOnly]
 
     def get_queryset(self):
         """
@@ -211,7 +281,7 @@ class CommentReferenceViewSet(viewsets.ModelViewSet):
     """
     queryset = CommentReference.objects.all()
     serializer_class = CommentReferenceSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCommentAuthorOrReadOnly]
+    permission_classes = [IsCommentatorOrReadOnly, IsCommentAuthorOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'authors', 'citation_text', 'doi']
 
@@ -234,7 +304,7 @@ class ConflictOfInterestViewSet(viewsets.ModelViewSet):
     """
     queryset = ConflictOfInterest.objects.all()
     serializer_class = ConflictOfInterestSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsCommentAuthorOrReadOnly]
+    permission_classes = [IsCommentatorOrReadOnly, IsCommentAuthorOrReadOnly]
 
     def get_queryset(self):
         """
@@ -260,7 +330,9 @@ class CommentModerationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Filter moderation entries based on user role:
-        - Moderators can see all moderation entries
+        - Staff members can see all moderation entries
+        - Moderators can see moderation entries for their assigned documents
+        - Review editors can see moderation entries for their assigned documents
         - Authors can see moderation entries for their comments
         """
         # Check if this is a schema generation request
@@ -270,11 +342,46 @@ class CommentModerationViewSet(viewsets.ModelViewSet):
 
         user = self.request.user
 
-        # Moderators can see all
-        if CommentModeration.objects.filter(moderator=user).exists():
+        # Staff members can see all
+        if user.is_staff:
             return CommentModeration.objects.all()
 
-        # Authors can see moderation for their comments
+        # Get documents where the user is assigned as a moderator
+        from publications.models import DocumentModerator
+        moderated_documents = DocumentModerator.objects.filter(
+            user=user,
+            is_active=True
+        ).values_list('document_version', flat=True)
+
+        # Get documents where the user is assigned as a review editor
+        from publications.models import DocumentReviewEditor
+        edited_documents = DocumentReviewEditor.objects.filter(
+            user=user,
+            is_active=True
+        ).values_list('document_version', flat=True)
+
+        # Combine the document lists
+        assigned_documents = list(moderated_documents) + list(edited_documents)
+
+        # Get comments for assigned documents
+        if assigned_documents:
+            assigned_comments = Comment.objects.filter(
+                document_version__in=assigned_documents
+            ).values_list('id', flat=True)
+
+            # Return moderation entries for assigned comments
+            moderation_for_assigned = CommentModeration.objects.filter(
+                comment__in=assigned_comments
+            )
+
+            # Authors can also see moderation for their comments
+            authored_comments = Comment.objects.filter(authors__user=user).values_list('id', flat=True)
+            moderation_for_authored = CommentModeration.objects.filter(comment__in=authored_comments)
+
+            # Combine the querysets
+            return moderation_for_assigned | moderation_for_authored
+
+        # If not a moderator or review editor, only show moderation for authored comments
         authored_comments = Comment.objects.filter(authors__user=user)
         return CommentModeration.objects.filter(comment__in=authored_comments)
 
@@ -286,13 +393,43 @@ class CommentModerationViewSet(viewsets.ModelViewSet):
         """
         Get comments pending moderation.
         """
-        # Check if the user is a moderator
-        if not CommentModeration.objects.filter(moderator=request.user).exists():
-            return Response({'detail': 'Only moderators can view pending comments.'}, status=status.HTTP_403_FORBIDDEN)
+        user = request.user
 
-        # Get comments that are submitted but not yet moderated
+        # Staff members can see all pending comments
+        if user.is_staff:
+            pending_comments = Comment.objects.filter(
+                status='submitted'
+            ).exclude(
+                id__in=CommentModeration.objects.values_list('comment_id', flat=True)
+            )
+            serializer = CommentListSerializer(pending_comments, many=True)
+            return Response(serializer.data)
+
+        # Get documents where the user is assigned as a moderator
+        from publications.models import DocumentModerator
+        moderated_documents = DocumentModerator.objects.filter(
+            user=user,
+            is_active=True
+        ).values_list('document_version', flat=True)
+
+        # Get documents where the user is assigned as a review editor
+        from publications.models import DocumentReviewEditor
+        edited_documents = DocumentReviewEditor.objects.filter(
+            user=user,
+            is_active=True
+        ).values_list('document_version', flat=True)
+
+        # Combine the document lists
+        assigned_documents = list(moderated_documents) + list(edited_documents)
+
+        if not assigned_documents:
+            return Response({'detail': 'You are not assigned as a moderator or review editor to any documents.'}, 
+                           status=status.HTTP_403_FORBIDDEN)
+
+        # Get pending comments for assigned documents
         pending_comments = Comment.objects.filter(
-            status='submitted'
+            status='submitted',
+            document_version__in=assigned_documents
         ).exclude(
             id__in=CommentModeration.objects.values_list('comment_id', flat=True)
         )
@@ -305,16 +442,47 @@ class CommentModerationViewSet(viewsets.ModelViewSet):
         """
         Moderate a comment.
         """
-        # Check if the user is a moderator
-        if not CommentModeration.objects.filter(moderator=request.user).exists() and not request.user.is_staff:
-            return Response({'detail': 'Only moderators can moderate comments.'}, status=status.HTTP_403_FORBIDDEN)
-
+        user = request.user
         comment_id = request.data.get('comment')
+
+        if not comment_id:
+            return Response({'detail': 'Comment ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            comment = Comment.objects.get(id=comment_id, status='submitted')
+        except Comment.DoesNotExist:
+            return Response({'detail': 'Comment not found or not in submitted status.'}, 
+                           status=status.HTTP_404_NOT_FOUND)
+
+        # Staff members can moderate any comment
+        if not user.is_staff:
+            # Check if the user is assigned as a moderator to this document
+            from publications.models import DocumentModerator
+            is_moderator = DocumentModerator.objects.filter(
+                document_version=comment.document_version,
+                user=user,
+                is_active=True
+            ).exists()
+
+            # Check if the user is assigned as a review editor to this document
+            from publications.models import DocumentReviewEditor
+            is_review_editor = DocumentReviewEditor.objects.filter(
+                document_version=comment.document_version,
+                user=user,
+                is_active=True
+            ).exists()
+
+            if not (is_moderator or is_review_editor):
+                return Response(
+                    {'detail': 'You are not assigned as a moderator or review editor to this document.'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
         decision = request.data.get('decision')
         decision_reason = request.data.get('decision_reason', '')
 
-        if not comment_id or not decision:
-            return Response({'detail': 'Comment ID and decision are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not decision:
+            return Response({'detail': 'Decision is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             comment = Comment.objects.get(id=comment_id, status='submitted')

@@ -1,10 +1,9 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from publications.models import DocumentVersion
-from comments.models import Comment
 
 User = get_user_model()
+
 
 class AIModel(models.Model):
     """
@@ -50,7 +49,8 @@ class AICommentSuggestion(models.Model):
         ('modified', 'Modified and Approved'),
     ]
 
-    document_version = models.ForeignKey(DocumentVersion, on_delete=models.CASCADE, related_name='ai_suggestions')
+    document_version = models.ForeignKey('publications.DocumentVersion', on_delete=models.CASCADE,
+                                         related_name='ai_suggestions')
     ai_model = models.ForeignKey(AIModel, on_delete=models.CASCADE, related_name='suggestions')
     ai_prompt = models.ForeignKey(AIPrompt, on_delete=models.CASCADE, related_name='suggestions')
     content = models.TextField()
@@ -61,7 +61,11 @@ class AICommentSuggestion(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='reviewed_suggestions')
-    comment = models.OneToOneField(Comment, on_delete=models.SET_NULL, null=True, blank=True, related_name='ai_suggestion')
+
+    # Das comment-Feld MIT String-Referenz - so vermeiden wir Import-Probleme
+    comment = models.OneToOneField('comments.Comment', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='ai_suggestion')
+
     confidence_score = models.FloatField(default=0.0)
 
     def __str__(self):

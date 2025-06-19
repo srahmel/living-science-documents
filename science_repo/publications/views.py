@@ -1794,14 +1794,12 @@ def import_document(request, document_version_id=None):
             document_version.title = content.get('title', document_version.title)
             document_version.abstract = content.get('abstract', document_version.abstract)
 
-            # Store the JATS-XML content
+            # Store the JATS-XML content and convert to HTML for display
             jats_xml = content.get('jats_xml', '')
-            document_version.content = jats_xml
-
-            # Convert JATS-XML to HTML for display
             if jats_xml:
+                # Convert JATS-XML to HTML and store in content field
                 html_content = JATSConverter.jats_to_html(jats_xml)
-                document_version.html_content = html_content
+                document_version.content = html_content
 
             # Update the document version's metadata
             if content.get('doi'):
@@ -1809,7 +1807,7 @@ def import_document(request, document_version_id=None):
                 document_version.publication.save(update_fields=['meta_doi'])
 
             # Save the document version
-            document_version.save(update_fields=['title', 'abstract', 'content', 'html_content'])
+            document_version.save(update_fields=['title', 'abstract', 'content'])
 
             # Create authors if they don't exist
             for author_name in content.get('authors', []):
