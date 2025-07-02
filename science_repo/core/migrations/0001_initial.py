@@ -18,22 +18,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='CommentType',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('short_code', models.CharField(max_length=10, unique=True)),
-                ('description', models.CharField(max_length=255)),
-            ],
-        ),
-        migrations.CreateModel(
-            name='Publication',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('meta_doi', models.CharField(max_length=200, unique=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-            ],
-        ),
-        migrations.CreateModel(
             name='User',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -67,79 +51,6 @@ class Migration(migrations.Migration):
             },
             managers=[
                 ('objects', django.contrib.auth.models.UserManager()),
-            ],
-        ),
-        migrations.CreateModel(
-            name='Comment',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('referenced_text', models.TextField(blank=True, null=True)),
-                ('content', models.TextField()),
-                ('comment_type', models.CharField(max_length=10)),
-                ('status', models.CharField(max_length=50)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('status_date', models.DateField()),
-                ('doi', models.CharField(blank=True, max_length=200, null=True)),
-                ('parent_comment', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='core.comment')),
-                ('reviewed_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='reviewed_comments', to=settings.AUTH_USER_MODEL)),
-                ('status_user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='moderated_comments', to=settings.AUTH_USER_MODEL)),
-            ],
-        ),
-        migrations.CreateModel(
-            name='CommentAuthor',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('comment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='authors', to='core.comment')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-            ],
-        ),
-        migrations.CreateModel(
-            name='ConflictOfInterest',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('statement', models.TextField(default='None')),
-                ('author', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('comment', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='core.comment')),
-            ],
-        ),
-        migrations.CreateModel(
-            name='Document',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('doi', models.CharField(max_length=200, unique=True)),
-                ('metadata', models.JSONField(blank=True, null=True)),
-                ('content', models.TextField()),
-                ('release_date', models.DateField(blank=True, null=True)),
-                ('status', models.CharField(max_length=50)),
-                ('status_date', models.DateField()),
-                ('status_user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='status_documents', to=settings.AUTH_USER_MODEL)),
-                ('publication', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='documents', to='core.publication')),
-            ],
-        ),
-        migrations.AddField(
-            model_name='comment',
-            name='document',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='comments', to='core.document'),
-        ),
-        migrations.CreateModel(
-            name='Author',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255)),
-                ('address', models.TextField(blank=True, null=True)),
-                ('institution', models.CharField(blank=True, max_length=255, null=True)),
-                ('email', models.EmailField(blank=True, max_length=254, null=True)),
-                ('orcid', models.CharField(blank=True, max_length=50, null=True)),
-                ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
-                ('document', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='authors', to='core.document')),
-            ],
-        ),
-        migrations.CreateModel(
-            name='Keyword',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('keyword', models.CharField(max_length=100, unique=True)),
-                ('document', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='keywords', to='core.document')),
             ],
         ),
         migrations.CreateModel(

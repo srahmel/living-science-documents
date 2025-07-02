@@ -6,6 +6,9 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
+# Get the base URL from settings
+base_url = settings.FORCE_SCRIPT_NAME or ''
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Living Science Documents API",
@@ -17,6 +20,7 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
+    url=f"{settings.API_BASE_URL}{settings.API_PATH}",
 )
 
 urlpatterns = [

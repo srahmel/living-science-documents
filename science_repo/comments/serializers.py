@@ -245,7 +245,9 @@ class CommentListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['id', 'document_version', 'comment_type_code', 'content', 'doi',
-                  'status', 'created_at', 'is_ai_generated', 'author_count']
+                  'status', 'created_at', 'is_ai_generated', 'author_count',
+                  'referenced_text', 'section_reference', 'line_start', 'line_end',
+                  ]
         read_only_fields = ['id', 'created_at', 'doi']
 
     def get_comment_type_code(self, obj):

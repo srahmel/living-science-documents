@@ -241,7 +241,11 @@ OPENAI_API_BASE = config('OPENAI_API_BASE', default='https://api.openai.com/v1')
 OPENAI_MAX_TOKENS = config('OPENAI_MAX_TOKENS', default=1000, cast=int)
 OPENAI_TEMPERATURE = config('OPENAI_TEMPERATURE', default=0.7, cast=float)
 
-# Swagger settings
+# Swagger/API URL settings - nach den anderen config() Aufrufen hinzufügen
+API_BASE_URL = config('API_BASE_URL', default='http://localhost:8000')
+API_PATH = config('API_PATH', default='')
+
+# Swagger settings erweitern:
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'Bearer': {
@@ -255,6 +259,7 @@ SWAGGER_SETTINGS = {
     'PERSIST_AUTH': True,
     'REFETCH_SCHEMA_WITH_AUTH': True,
     'REFETCH_SCHEMA_ON_LOGOUT': True,
+    'VALIDATOR_URL': None,  # Deaktiviert externe Validierung
 }
 
 LOGGING = {
