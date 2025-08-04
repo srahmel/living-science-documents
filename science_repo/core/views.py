@@ -14,6 +14,11 @@ from .analytics import AnalyticsService
 from django.contrib.auth.models import Group
 from django.urls import reverse
 from django.middleware.csrf import get_token
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from .email import EmailService
 
 User = get_user_model()
 
@@ -503,9 +508,221 @@ def csrf_token_view(request):
 
     This endpoint returns a CSRF token that can be used by frontend applications
     to make requests that require CSRF protection.
+    This endpoint is publicly accessible without authentication.
 
     Returns:
     - 200 OK: Returns the CSRF token
     """
     token = get_token(request)
     return Response({'csrfToken': token})
+
+# Create a separate public CSRF token view that explicitly bypasses authentication
+class PublicCSRFTokenView(generics.GenericAPIView):
+    """
+    Public API view for getting a CSRF token without authentication.
+    
+    This view explicitly sets permission_classes to AllowAny to ensure
+    it's publicly accessible regardless of global authentication settings.
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request, *args, **kwargs):
+        """
+        Get a CSRF token without authentication.
+        
+        Returns:
+        - 200 OK: Returns the CSRF token
+        """
+        token = get_token(request)
+        return Response({'csrfToken': token})
+
+
+@swagger_auto_schema(
+    method='post',
+    responses={
+        200: openapi.Response(
+            description="Logout successful",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Success message')
+                }
+            )
+        ),
+        401: "Unauthorized"
+    },
+    operation_description="Logout the current user by blacklisting their refresh token."
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    """
+    Logout the current user.
+
+    This endpoint blacklists the user's refresh token, effectively logging them out.
+    The client should also remove any stored tokens.
+
+    Returns:
+    - 200 OK: Logout successful
+    - 401 Unauthorized: If the user is not authenticated
+    """
+    try:
+        # Get all outstanding tokens for the user
+        tokens = OutstandingToken.objects.filter(user_id=request.user.id)
+        
+        # Blacklist all outstanding tokens
+        for token in tokens:
+            BlacklistedToken.objects.get_or_create(token=token)
+            
+        return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@swagger_auto_schema(
+    method='post',
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'email': openapi.Schema(type=openapi.TYPE_STRING, description='User email')
+        },
+        required=['email']
+    ),
+    responses={
+        200: openapi.Response(
+            description="Password reset email sent",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Success message')
+                }
+            )
+        ),
+        400: "Bad Request",
+        404: "User not found"
+    },
+    operation_description="Request a password reset email."
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_request(request):
+    """
+    Request a password reset email.
+    
+    This endpoint sends a password reset email to the user with the provided email address.
+    The email contains a link with a token that can be used to reset the password.
+    
+    Parameters:
+    - email: User's email address
+    
+    Returns:
+    - 200 OK: Password reset email sent
+    - 400 Bad Request: Invalid input data
+    - 404 Not Found: User not found
+    """
+    email = request.data.get('email')
+    if not email:
+        return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = User.objects.get(email=email)
+        
+        # Generate token
+        token_generator = PasswordResetTokenGenerator()
+        token = token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        
+        # Combine uid and token for security
+        reset_token = f"{uid}-{token}"
+        
+        # Send password reset email
+        EmailService.send_password_reset_email(user, reset_token)
+        
+        return Response({"detail": "Password reset email has been sent."}, status=status.HTTP_200_OK)
+    except User.DoesNotExist:
+        # For security reasons, don't reveal that the user doesn't exist
+        return Response({"detail": "Password reset email has been sent if the email exists."}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@swagger_auto_schema(
+    method='post',
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'token': openapi.Schema(type=openapi.TYPE_STRING, description='Password reset token'),
+            'email': openapi.Schema(type=openapi.TYPE_STRING, description='User email'),
+            'password': openapi.Schema(type=openapi.TYPE_STRING, description='New password')
+        },
+        required=['token', 'email', 'password']
+    ),
+    responses={
+        200: openapi.Response(
+            description="Password reset successful",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Success message')
+                }
+            )
+        ),
+        400: "Bad Request",
+        404: "User not found"
+    },
+    operation_description="Reset password with token."
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_confirm(request):
+    """
+    Reset password with token.
+    
+    This endpoint resets the user's password using the token from the password reset email.
+    
+    Parameters:
+    - token: Password reset token
+    - email: User's email address
+    - password: New password
+    
+    Returns:
+    - 200 OK: Password reset successful
+    - 400 Bad Request: Invalid input data or token
+    - 404 Not Found: User not found
+    """
+    token = request.data.get('token')
+    email = request.data.get('email')
+    password = request.data.get('password')
+    
+    if not token or not email or not password:
+        return Response({"error": "Token, email, and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = User.objects.get(email=email)
+        
+        # Split token into uid and token
+        try:
+            uid, token = token.split('-', 1)
+            uid = force_str(urlsafe_base64_decode(uid))
+            user_from_uid = User.objects.get(pk=uid)
+            
+            # Verify that the uid matches the email
+            if user.pk != user_from_uid.pk:
+                return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+        except (ValueError, User.DoesNotExist, TypeError):
+            return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify token
+        token_generator = PasswordResetTokenGenerator()
+        if not token_generator.check_token(user, token):
+            return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Set new password
+        user.set_password(password)
+        user.save()
+        
+        return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

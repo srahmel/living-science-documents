@@ -11,9 +11,14 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('register/', views.register_view, name='register'),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('csrf/', views.csrf_token_view, name='csrf_token'),
+    # Use the new public CSRF token view that explicitly bypasses authentication
+    path('csrf/', views.PublicCSRFTokenView.as_view(), name='csrf_token'),
+    path('logout/', views.logout_view, name='logout'),
     path('orcid/login/', views.orcid_login, name='orcid_login'),
     path('orcid/callback/', views.orcid_callback, name='orcid_callback'),
+    # Password reset endpoints
+    path('password-reset/', views.password_reset_request, name='password-reset'),
+    path('password-reset/confirm/', views.password_reset_confirm, name='password-reset-confirm'),
     path('', include(router.urls)),
     # Analytics endpoints
     path('analytics/summary/', views.analytics_summary, name='analytics-summary'),

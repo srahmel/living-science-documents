@@ -3,8 +3,8 @@ import sys
 import json
 from urllib.parse import urljoin
 
-# The URL provided in the issue description
-BASE_URL = "https://v2202209183503201737.happysrv.de/srahmel/living-science-documents/"
+# Base URL for the API server
+BASE_URL = "https://v2202209183503201737.happysrv.de/"
 
 def test_orcid_login():
     """Test the ORCID login endpoint"""

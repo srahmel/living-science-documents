@@ -14,6 +14,7 @@ from pathlib import Path
 from decouple import config
 from datetime import timedelta
 import os
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -144,7 +145,12 @@ USE_TZ = True
 
 from decouple import config
 
-FORCE_SCRIPT_NAME = config('FORCE_SCRIPT_NAME', default=None)
+# Set FORCE_SCRIPT_NAME to None when running tests to prevent URL duplication
+# This fixes the issue where test URLs have /srahmel/living-science-documents twice
+if 'test' in sys.argv:
+    FORCE_SCRIPT_NAME = None
+else:
+    FORCE_SCRIPT_NAME = config('FORCE_SCRIPT_NAME', default=None)
 STATIC_URL = config('STATIC_URL', default='/static/')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 

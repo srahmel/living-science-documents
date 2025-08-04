@@ -2,8 +2,8 @@ import requests
 import sys
 from urllib.parse import urljoin
 
-# The URL provided in the issue description
-BASE_URL = "https://v2202209183503201737.happysrv.de/srahmel/living-science-documents/"
+# Base URL for the API server
+BASE_URL = "https://v2202209183503201737.happysrv.de/"
 
 def test_endpoint(endpoint, method="GET", data=None, expected_status=200):
     """Test an API endpoint and return whether it's functional"""

@@ -86,6 +86,7 @@ class DocumentVersion(models.Model):
     discussion_status = models.CharField(max_length=20, choices=DISCUSSION_STATUS_CHOICES, default='open')
     discussion_closed_date = models.DateTimeField(null=True, blank=True)
     discussion_closed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="closed_discussions")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('publication', 'version_number')
@@ -109,6 +110,7 @@ class Author(models.Model):
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="publication_authors")
     order = models.PositiveIntegerField(default=0)
     is_corresponding = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['order']
@@ -163,6 +165,7 @@ class Keyword(models.Model):
     """
     document_version = models.ForeignKey(DocumentVersion, on_delete=models.CASCADE, related_name='keywords')
     keyword = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('document_version', 'keyword')

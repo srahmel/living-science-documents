@@ -13,6 +13,7 @@ class EmailService:
     - Notification emails for comment status changes
     - Notification emails for publication status changes
     - Welcome emails for new users
+    - Password reset emails
     """
     
     @staticmethod
@@ -177,6 +178,42 @@ class EmailService:
         
         # Render HTML message from template
         html_message = render_to_string('emails/welcome.html', context)
+        
+        # Create plain text version by stripping HTML
+        plain_message = strip_tags(html_message)
+        
+        return EmailService.send_email(
+            subject=subject,
+            message=plain_message,
+            recipient_list=[user.email],
+            html_message=html_message
+        )
+        
+    @staticmethod
+    def send_password_reset_email(user, token):
+        """
+        Send a password reset email to a user.
+        
+        Args:
+            user: The user object
+            token: The password reset token
+            
+        Returns:
+            bool: True if the email was sent successfully, False otherwise
+        """
+        subject = "Reset Your Password - Living Science Documents"
+        
+        # Create the reset URL with the token
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}&email={user.email}"
+        
+        # Prepare context for the template
+        context = {
+            'user': user,
+            'reset_url': reset_url,
+        }
+        
+        # Render HTML message from template
+        html_message = render_to_string('emails/password_reset.html', context)
         
         # Create plain text version by stripping HTML
         plain_message = strip_tags(html_message)

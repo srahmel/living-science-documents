@@ -222,16 +222,18 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """
-        Validate that comments are in question form if required by the comment type.
+        Validate that AI-generated comments of type SC or rSC are in question form.
+        Human-generated comments can be more flexible.
         """
         if 'content' in data and 'comment_type' in data:
             comment_type = data['comment_type']
             content = data['content'].strip()
+            is_ai_generated = data.get('is_ai_generated', False)
 
-            # Check if SC or rSC comment is in question form
-            if comment_type.code in ['SC', 'rSC'] and not content.endswith('?'):
+            # Check if AI-generated SC or rSC comment is in question form
+            if comment_type.code in ['SC', 'rSC'] and is_ai_generated and not content.endswith('?'):
                 raise serializers.ValidationError(
-                    f"{comment_type.code} comments must be in question form (end with '?')"
+                    f"AI-generated {comment_type.code} comments must be in question form (end with '?')"
                 )
 
         return data
@@ -241,11 +243,12 @@ class CommentListSerializer(serializers.ModelSerializer):
     """Simplified serializer for listing comments"""
     comment_type_code = serializers.SerializerMethodField()
     author_count = serializers.SerializerMethodField()
+    authors = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
         fields = ['id', 'document_version', 'comment_type_code', 'content', 'doi',
-                  'status', 'created_at', 'is_ai_generated', 'author_count',
+                  'status', 'created_at', 'is_ai_generated', 'author_count', 'authors',
                   'referenced_text', 'section_reference', 'line_start', 'line_end',
                   ]
         read_only_fields = ['id', 'created_at', 'doi']
@@ -255,6 +258,16 @@ class CommentListSerializer(serializers.ModelSerializer):
 
     def get_author_count(self, obj):
         return obj.authors.count()
+
+    def get_authors(self, obj):
+        """Return a list of authors with their names and AIDs (user IDs)"""
+        return [
+            {
+                'name': author.user.get_full_name(),
+                'aid': author.user.id
+            }
+            for author in obj.authors.all()
+        ]
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):

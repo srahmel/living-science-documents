@@ -144,6 +144,19 @@ class CSRFTokenAPITest(APITestCase):
 
     def test_csrf_token_endpoint(self):
         """Test that the CSRF token endpoint returns a valid token"""
+        # Test the endpoint without authentication
+        response = self.client.get('/api/auth/csrf/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('csrfToken', response.data)
+        self.assertIsNotNone(response.data['csrfToken'])
+        self.assertTrue(len(response.data['csrfToken']) > 0)
+        
+    def test_csrf_token_endpoint_is_public(self):
+        """Test that the CSRF token endpoint is publicly accessible"""
+        # Force the client to be unauthenticated
+        self.client.force_authenticate(user=None)
+        
+        # Test the endpoint without authentication
         response = self.client.get('/api/auth/csrf/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('csrfToken', response.data)

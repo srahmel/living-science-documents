@@ -207,10 +207,10 @@ class CommentViewSet(viewsets.ModelViewSet):
         if comment.status != 'draft':
             return Response({'detail': 'Only draft comments can be submitted.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate that SC and rSC comments are in question form
-        if comment.comment_type.code in ['SC', 'rSC'] and not comment.is_question():
+        # Validate that AI-generated SC and rSC comments are in question form
+        if comment.comment_type.code in ['SC', 'rSC'] and comment.is_ai_generated and not comment.is_question():
             return Response(
-                {'detail': f"{comment.comment_type.code} comments must be in question form (end with '?')"},
+                {'detail': f"AI-generated {comment.comment_type.code} comments must be in question form (end with '?')"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

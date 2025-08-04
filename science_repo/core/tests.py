@@ -181,6 +181,7 @@ class UserViewSetTest(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.users_url = reverse('user-list')
+        self.logout_url = reverse('logout')
         self.admin_data = {
             'username': 'admin',
             'email': 'admin@example.com',
@@ -231,6 +232,14 @@ class UserViewSetTest(APITestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(f"{self.users_url}{self.admin.id}/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+    def test_logout(self):
+        """Test that a user can logout successfully"""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('detail', response.data)
+        self.assertEqual(response.data['detail'], 'Successfully logged out.')
 
     def test_create_user_admin(self):
         """Test that an admin can create a new user"""
@@ -319,7 +328,7 @@ class RegistrationAPITest(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.register_url = '/srahmel/living-science-documents/api/auth/auth/register/'
+        self.register_url = '/api/auth/register/'
 
         # Add 'testserver' to ALLOWED_HOSTS
         from django.conf import settings

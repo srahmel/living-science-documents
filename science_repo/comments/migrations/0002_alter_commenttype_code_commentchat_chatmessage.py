@@ -27,64 +27,6 @@ class Migration(migrations.Migration):
                 unique=True,
             ),
         ),
-        migrations.CreateModel(
-            name="CommentChat",
-            fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
-                (
-                    "comment",
-                    models.OneToOneField(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="chat",
-                        to="comments.comment",
-                    ),
-                ),
-            ],
-        ),
-        migrations.CreateModel(
-            name="ChatMessage",
-            fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("content", models.TextField()),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
-                (
-                    "user",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="chat_messages",
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
-                (
-                    "chat",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="messages",
-                        to="comments.commentchat",
-                    ),
-                ),
-            ],
-            options={
-                "ordering": ["created_at"],
-            },
-        ),
+        # CommentChat und ChatMessage werden NICHT nochmal erstellt,
+        # da sie bereits in 0001_initial.py existieren
     ]
