@@ -28,7 +28,7 @@ class FigureSerializer(serializers.ModelSerializer):
     """Serializer for the Figure model"""
     class Meta:
         model = Figure
-        fields = ['id', 'document_version', 'figure_number', 'title', 'caption', 'image', 'created_at', 'updated_at']
+        fields = ['id', 'document_version', 'figure_number', 'title', 'caption', 'alt_text', 'license', 'source', 'attribution', 'image', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 

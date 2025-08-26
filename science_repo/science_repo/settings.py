@@ -97,16 +97,25 @@ WSGI_APPLICATION = 'science_repo.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME', default='science_repo'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='postgres'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
+# Use SQLite during tests to avoid external DB dependency and to share state across threads
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'test_db.sqlite3'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='science_repo'),
+            'USER': config('DB_USER', default='postgres'),
+            'PASSWORD': config('DB_PASSWORD', default='postgres'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
+    }
 
 
 # Password validation
@@ -202,13 +211,14 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
 }
 
-# ORCID OAuth2 settings
-ORCID_CLIENT_ID = config('ORCID_CLIENT_ID')
-ORCID_CLIENT_SECRET = config('ORCID_CLIENT_SECRET')
+# ORCID OAuth2 settings (optional in tests/dev when keys are not provided)
+ORCID_CLIENT_ID = config('ORCID_CLIENT_ID', default='')
+ORCID_CLIENT_SECRET = config('ORCID_CLIENT_SECRET', default='')
 ORCID_BASE_URL = 'https://orcid.org'
 ORCID_API_URL = 'https://pub.orcid.org/v3.0'
 ORCID_AUTH_URL = f'{ORCID_BASE_URL}/oauth/authorize'
 ORCID_TOKEN_URL = f'{ORCID_BASE_URL}/oauth/token'
+ORCID_ENABLED = bool(ORCID_CLIENT_ID and ORCID_CLIENT_SECRET)
 
 # DOI settings
 DOI_PREFIX = config('DOI_PREFIX', default='10.1234')

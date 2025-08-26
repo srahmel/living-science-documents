@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions, status, filters
+from rest_framework import viewsets, permissions, status, filters, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -1032,6 +1032,144 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description', 'file_type']
     ordering_fields = ['created_at', 'title']
     ordering = ['-created_at']
+
+    @action(detail=False, methods=['post'], url_path='upload-image')
+    def upload_image(self, request):
+        """
+        Upload an image (from paste/drop) with validation, optional ClamAV scan,
+        EXIF stripping, and return the final storage URL and metadata.
+        Accepts multipart/form-data with fields:
+          - file: the image file (required)
+          - title (optional)
+          - description (optional)
+          - document_version (optional int) to attach under a document version
+        Returns JSON with: url, mime, size, width, height, checksum_sha256, exif_removed, clamav_status.
+        """
+        from core.exceptions import format_error_response
+        from django.core.files.base import ContentFile
+        from django.core.files.uploadedfile import InMemoryUploadedFile
+        from django.conf import settings
+        from PIL import Image
+        import io, hashlib
+
+        img_file = request.FILES.get('file') or request.FILES.get('image')
+        if not img_file:
+            return format_error_response('No image file provided.', status.HTTP_400_BAD_REQUEST)
+
+        # MIME and size validation
+        allowed_mimes = {'image/png', 'image/jpeg', 'image/webp', 'image/gif'}
+        content_type = getattr(img_file, 'content_type', None) or ''
+        if content_type.lower() not in allowed_mimes:
+            return format_error_response(f'Unsupported image MIME type: {content_type}', status.HTTP_400_BAD_REQUEST)
+
+        max_mb = getattr(settings, 'MAX_UPLOAD_IMAGE_SIZE_MB', 15)
+        if img_file.size > max_mb * 1024 * 1024:
+            return format_error_response(f'File too large. Max {max_mb} MB.', status.HTTP_400_BAD_REQUEST)
+
+        # Optional ClamAV scan
+        clamav_status = 'skipped'
+        clam_host = getattr(settings, 'CLAMAV_HOST', None)
+        clam_port = getattr(settings, 'CLAMAV_PORT', None)
+        if clam_host and clam_port:
+            try:
+                import socket
+                import struct
+                # Simple INSTREAM command to clamd (if available)
+                s = socket.create_connection((clam_host, int(clam_port)), timeout=5)
+                s.sendall(b'nINSTREAM\n')
+                # stream in chunks
+                for chunk in img_file.chunks():
+                    s.sendall(struct.pack('!I', len(chunk)))
+                    s.sendall(chunk)
+                s.sendall(struct.pack('!I', 0))
+                data = s.recv(4096)
+                s.close()
+                msg = data.decode('utf-8', errors='ignore')
+                if 'FOUND' in msg:
+                    return format_error_response('Virus detected in uploaded file.', status.HTTP_400_BAD_REQUEST)
+                clamav_status = 'clean'
+            except Exception as e:
+                logger.warning(f"ClamAV scan skipped due to error: {e}")
+                clamav_status = 'error'
+            finally:
+                img_file.seek(0)
+
+        # Strip EXIF by re-encoding via Pillow
+        exif_removed = False
+        width = height = None
+        out_bytes = io.BytesIO()
+        try:
+            with Image.open(img_file) as im:
+                width, height = im.size
+                format = im.format or 'PNG'
+                save_kwargs = {}
+                if format.upper() == 'JPEG':
+                    save_kwargs = {'format': 'JPEG', 'quality': 95, 'optimize': True}
+                elif format.upper() == 'PNG':
+                    save_kwargs = {'format': 'PNG', 'optimize': True}
+                elif format.upper() == 'WEBP':
+                    save_kwargs = {'format': 'WEBP', 'quality': 90}
+                else:
+                    # fallback to PNG
+                    save_kwargs = {'format': 'PNG'}
+                im_no_exif = Image.new(im.mode, im.size)
+                im_no_exif.putdata(list(im.getdata()))
+                im_no_exif.save(out_bytes, **save_kwargs)
+                exif_removed = True
+        except Exception as e:
+            # If Pillow fails (e.g., GIF), just pass through original bytes
+            logger.warning(f"Pillow EXIF strip failed, using original image: {e}")
+            img_file.seek(0)
+            out_bytes = io.BytesIO(img_file.read())
+        finally:
+            img_file.seek(0)
+
+        out_bytes.seek(0)
+        final_bytes = out_bytes.getvalue()
+        checksum = hashlib.sha256(final_bytes).hexdigest()
+
+        # Build a new uploaded file for storage
+        filename = img_file.name
+        new_file = InMemoryUploadedFile(
+            file=io.BytesIO(final_bytes),
+            field_name='file',
+            name=filename,
+            content_type=content_type,
+            size=len(final_bytes),
+            charset=None
+        )
+
+        # Create Attachment record
+        title = request.data.get('title') or filename
+        description = request.data.get('description')
+        doc_version_id = request.data.get('document_version')
+        attachment_kwargs = {
+            'title': title,
+            'description': description,
+            'file': new_file,
+            'file_type': content_type,
+        }
+        if doc_version_id:
+            try:
+                dv = DocumentVersion.objects.get(pk=int(doc_version_id))
+                attachment_kwargs['document_version'] = dv
+            except Exception:
+                pass
+
+        attachment = Attachment.objects.create(**attachment_kwargs)
+        file_url = attachment.file.url if hasattr(attachment.file, 'url') else str(attachment.file)
+
+        return Response({
+            'id': attachment.id,
+            'url': file_url,
+            'mime': content_type,
+            'size': len(final_bytes),
+            'width': width,
+            'height': height,
+            'checksum_sha256': checksum,
+            'exif_removed': exif_removed,
+            'clamav_status': clamav_status,
+        }, status=status.HTTP_201_CREATED)
 
 
 class ReviewProcessViewSet(viewsets.ModelViewSet):

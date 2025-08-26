@@ -345,6 +345,36 @@ class JATSConverter:
                 p = etree.SubElement(sec, "p")
                 p.text = document_version.conclusion
 
+            # Figures
+            if hasattr(document_version, 'figures') and document_version.figures.exists():
+                figs_sec = etree.SubElement(body, "sec", attrib={"sec-type": "figures"})
+                title = etree.SubElement(figs_sec, "title")
+                title.text = "Figures"
+                for fig_obj in document_version.figures.all().order_by('figure_number'):
+                    fig_el = etree.SubElement(figs_sec, "fig", attrib={"id": f"fig{fig_obj.figure_number}"})
+                    # Caption
+                    if fig_obj.caption:
+                        caption_el = etree.SubElement(fig_el, "caption")
+                        p = etree.SubElement(caption_el, "p")
+                        p.text = fig_obj.caption
+                    # Alt text
+                    if getattr(fig_obj, 'alt_text', None):
+                        alt_el = etree.SubElement(fig_el, "alt-text")
+                        alt_el.text = fig_obj.alt_text
+                    # Graphic
+                    try:
+                        href = fig_obj.image.url
+                    except Exception:
+                        href = str(fig_obj.image)
+                    graphic_el = etree.SubElement(fig_el, "graphic", attrib={"xlink:href": href})
+                    # Optional metadata as custom attributes
+                    if getattr(fig_obj, 'license', None):
+                        fig_el.set('data-license', fig_obj.license)
+                    if getattr(fig_obj, 'source', None):
+                        fig_el.set('data-source', fig_obj.source)
+                    if getattr(fig_obj, 'attribution', None):
+                        fig_el.set('data-attribution', fig_obj.attribution)
+
             # Back matter
             back = etree.SubElement(root, "back")
 

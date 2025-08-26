@@ -1,0 +1,1460 @@
+
+
+
+
+Systemanalyse: Lastenheft (Anforderungen)
+
+NAL-live
+Publikations- und Diskussionsplattform für eine wissenschaftliche Open Access-Zeitschrift NAL-live
+
+
+
+
+
+
+
+
+für die
+
+
+Änderungshistorie
+
+DatumÄnderungKap.Ver- sion03.06.2020Aufsetzen der Kapitelstruktur, Initial Befüllung mit
+Informationen auf Angebot und Ergebnissen des KickoffsV0.112.06.2020Einarbeitung der Ergebnisse des WS1. Ziele, Rah- menbedingungen, Stakeholder, Prozesslandkarte1,2V0.122.06.2020Dokumentation der Ergebnisse des WS2. Erstentwurf Datenmodell, Prozesse, Kommentar-
+funktionen3.1,3.2,3.4V0.129.06.2020[Bereitstellung im DMS-Kundenbereich], UseCases Dashboard und Benutzerverwaltung3.4V0.213.08.2020Bereitstellung im DMS-Kundenbereich zum Review,alleV0.319.08.2020Einarbeitung der Ergebnisse aus ReviewV0.415.10.2020Einarbeitung der Ergebnisse aus Review UseCases und Schnittstellen zu Literaturverwaltung
+UseCase zur Benutzerverwaltung UC_AD_0073.3.2,
+3.3.6,
+3.5.10V.0.523.10.2020JATS-XML in IF_003 aufgenommen, Review abge- schlossenV.1.0
+Inhaltsverzeichnis
+
+1 Einleitung	5
+2 Ausgangssituation und Zielsetzung	6
+2.1 Ausgangslage	6
+2.2 Zielsetzung	6
+2.3 Abgrenzung des Systems	7
+2.4 Betroffene Geschäftsprozesse.	8
+2.5 Stakeholder	12
+2.6 Organisatorischer und technischer Rahmen	15
+	Zu erfüllende Standards	15
+ Technische Rahmenbedingungen	15
+3 Funktionale Anforderungen	16
+3.1 Rollen und Rechte	16
+3.2 Fachliches Datenmodell	19
+	01 Anwender	20
+ 02 Publikation	20
+ 03 Dokument	20
+ 04 Autor	21
+ 05 Kommentar	21
+ 06 Kommentator	21
+ 07 Interessenkonflikt	21
+ 08 Kommentartyp	22
+ 09 Erweiterte Suche	22
+ 10 Suchattribute	22
+ 11 Alias	22
+ 12 Stichwort	23
+3.3 Anwendungsfälle	24
+	EP_001 Dokument einstellen / verwalten	24
+ EP_002 Dokumente nutzen	29
+ EP_003 Kommentar erstellen	37
+ EP_004 Informieren	43
+ EP_005 Benutzer verwalten	50
+ EP_006 Stammdaten verwalten	57
+3.4 Benutzeroberflächen	61
+	Sprachunterstützung	61
+3.5 Schnittstellen	62
+	IF_001 DOI – Digital Object Identifier	62
+ IF_002 ORCID – Open Researcher and Contributor Identifier	62
+ IF_003 Redaktionssysteme	63
+ IF_004 Archivsysteme	64
+ IF_005 Emailversand	64
+ IF_006 Bereitstellen von Publikationen, Versionen, Kommentaren64  IF_007 Bereitstellen von Auswertungen	65
+ IF_008 Publikationsverzeichnisse	65
+ IF_009 Suchmaschinen	65
+ IF_010 Zitationsformate	66
+4 Nicht-Funktionale Anforderungen	67
+4.1 Funktionalität	67
+	Richtigkeit/Genauigkeit	67
+ Interoperabilität	67
+ Ordnungsmäßigkeit	68
+4.2 Sicherheit	68
+	BSI IT-Grundschutzkatalog	68
+4.3 Zuverlässigkeit	68
+	Reife / Fehlertoleranz	69
+ Verfügbarkeit	69
+ Robustheit	69
+ Wiederherstellbarkeit	69
+4.4 Benutzbarkeit	70
+	Erlernbarkeit	70
+ Verständlichkeit	70
+ Bedienbarkeit	71
+ Sonstige Anforderungen	72
+4.5 Effizienz	72
+	Zeitverhalten	72
+ Verbrauchsverhalten	73
+4.6 Änderbarkeit	73
+	Analysierbarkeit	73
+ Modifizierbarkeit	73
+ Stabilität	74
+ Prüfbarkeit	74
+4.7 Übertragbarkeit	75
+	Anpassbarkeit	75
+ Installierbarkeit	75
+ Koexistenz.	75
+ Austauschbarkeit	75
+ Randbedingungen	76
+5 Datenschutzanforderungen	77
+6 IT-Sicherheitsanforderungen und Schutzbedarf	78
+7 Lebenszyklus	79
+8 Gesamtarchitektur	80
+9 Lieferumfang	81
+10 Abnahmekriterien	82
+11 Glossar	83
+12 Anlagen	85
+13 Abbildungsverzeichnis	86
+14 Tabellenverzeichnis	87
+
+1 Einleitung
+Die Nationale Akademie der Wissenschaften Leopoldina berät die Politik mit ihren Stellungnahmen zu drängenden Themen der Gesellschaft, die einer wissenschaft- lich fundierten Bewertung bedürfen. Dabei gilt es auch wichtige Entwicklungen, die sich in der Wissenschaft andeuten und möglicherweise künftig gesellschaftliche Be- deutung erlangen, frühzeitig zu erkennen, zu analysieren und entsprechend zu kom- mentieren. Auf diese Weise trägt die Leopoldina dazu bei, dass politische Entschei- dungen auf Grundlage verlässlicher wissenschaftlicher Erkenntnisse getroffen wer- den können. Mit dem geplanten Datenbanksystem unterstützt die Leopoldina die Gestaltung der Informationsgesellschaft.
+
+2 Ausgangssituation und Zielsetzung
+2.1 Ausgangslage
+Die Leopoldina entwickelt derzeit ein neues wissenschaftliches Journal: NAL-live1, ein Online-Open Access-Journal für Übersichtsartikel aus allen akademischen Be- reichen. Besonderes Merkmal dieses Journals sind die „Living Documents“: Einmal veröffentlichte Artikel werden von den Autoren und/oder anderen Wissenschaftlern gemein-sam weiterentwickelt, indem Kommentare und Ergänzungen eingefügt wer- den. So entstehen im Laufe der Zeit aktualisierte und überarbeitete Versionen, und alle Versionen, Kommentare etc. werden dokumentiert und bleiben dauerhaft zitier- fähig. Der gesamte Prozess von der Einreichung der Manuskripte bis zur Kommen- tierung und Versionierung erfolgt vollständig online. Die Publikationssprache ist Englisch. Nähere Informationen zum Konzept erhalten Sie unter www.nal-live.de.
+Aktuell wird die Plattform PaperHive2 für die prototypische Darstellung und Diskus- sion von Publikationen der NAL-live verwendet. PaperHive als proprietäres und kos- tenpflichtiges System erfüllt nicht den Wunsch nach einer nachhaltigen und offenen Lösung und deckt die geforderten Funktionaltäten zur Moderation/Prüfung/Freigabe von Kommentaren nicht bzw. nur unzureichend ab.
+Als wissenschaftliches Open Access-Journal muss auch NAL-live bestimmte Anfor- derungen erfüllen, etwa hinsichtlich eines transparenten Peer Review, der nachhal- tigen Auffindbarkeit und Zitierbarkeit durch persistente Identifier (DOI) oder auch der Indexierung durch etablierte Indexdienste. Dies ist der Publikation und Diskussion auf der geplanten Plattform weitgehend vorgelagert und wird über öffentliche Doku- mentenserver und akademische Indexdienste sowie Bibliotheks-services abgebil- det.
+2.2 Zielsetzung
+Übergreifendes Ziel ist es, offene wissenschaftliche Diskussionen anzuregen, zu moderieren und zu dokumentieren.
+Hauptziel und Vision des beschriebenen Systems NAL-Live ist es, eine geeignete Plattform bereitzustellen, um wissenschaftliche Publikationen zu diskutieren und fortzuschreiben.
+Das System NAL-Live soll eine qualitätsgesicherte Diskussion und Fortschreibung wissenschaftlicher Publikationen ermöglichen, diese langfristig dokumentieren und öffentlich zugänglich machen.
+Zur Erreichung dieses Zieles soll es
+* den Autoren ermöglichen, ihre Publikationen einem qualifizierten Teilnehmer- kreis zur Diskussion zu stellen und unter Verwertung der Diskussionsbeiträge fortzuschreiben.
+* registrierten Anwendern ermöglichen, Publikationen zitierfähig zu kommen- tieren, diskutieren und gemeinsam deren Inhalte weiterzuentwickeln.
+
+
+1 http://www.nal-live.de
+2 https://paperhive.org/
+
+* dem Betreiber des Systems NAL-live ermöglichen, die Qualität der Diskus- sion und Diskussionsbeiträge zu steuern.
+* interessierten Lesern ermöglichen, alle Publikationen und zughörige Kom- mentare frei einzusehen.
+
+
+2.3 Abgrenzung des Systems
+In diesem Kapitel wird eine Abgrenzung des zu entwickelnden Systems vom Sys- temkontext (Umgebung des Systems) vorgenommen. Die folgende Tabelle enthält eine Liste der Kernfunktionalitäten und nimmt eine Abgrenzung vor, welche in dieser Funktionalität Teil des zu entwickelnden Systems (In-Score) sind und welche nicht (Out-of-Scope). Dadurch wird die Systemgrenze bestimmt.
+
+Nr.Kernaufgabe des zu entwickelnden SystemsKurzbeschreibungAkteurIn-ScopeOut-of- Scope1Publikation zur Diskussion stellenPublikation in System aufnehmen und zu- gänglich machen,Editor3*Zuständigkeiten festlegenPublikation Archivierung Verschlag- wortung/ Klassifizie-
+rung2Publikation den Anwendern zugänglich machenPublikationen suchen, einsehen und drucken könnenLeserImportieren Suchen, Anzeigen, Drucken, exportierenPublikation bearbeiten, Reviewen Publikation
+der Rohda- ten3Kommentieren und Diskutiereneingestellte Publikatio- nen kommentieren und diskutierenKom- menta- tor, Mo- deratorBestandteil der Pub markieren und kommentie- ren
+Kommentar kommentieren4Diskussion moderierenEingestellte Kommen- tare auf formale und in- haltliche Eignung prü- fenModera- torenKommentare prüfen und frei- geben Freigegebene Kommentare mit DOI	versehen und
+Autoren,	Kom- mentatoren		in-
+formieren5Neue Version der Publikation erstellenEditor, AutorKommentarfunk- tion sperren, Neue Version in System einstel- len
+Übernahme der offenen Kom- mentare in neue Version
+Neue  Version
+zur Diskussion bereitstellenPublikation bearbeiten, Review, Neue	Ver-
+sion veröf- fentlichen,6Archive und Publikationsverzeichnisse über Publikationen und qualifizierte Kommentare informieren.EditorArchivierung
+
+
+3 Der Akteur ‚Editor‘ in diesem Kontext umfasst mehrere Rollen, die mit der organisatorischen Be- arbeitung einer Publikation betraut sind. Diese können durch eine oder mehrere Personen wahrge- nommen werden.
+
+2.4 Betroffene Geschäftsprozesse
+Das System NAL-Live ist eingebettet in den Publikationsprozess wissenschaftlicher Publikationen der Leopoldina.
+
+Abbildung 1: Prozesslandkarte
+
+Die Publikation einer wissenschaftlichen Arbeit initiiert deren Bereitstellung in der hier beschriebenen Publikations- und Diskussionsplattform.
+Nach erfolgter Bereitstellung können registrierte Anwender die bereitgestellten Pub- likationen diskutieren.
+Ist ein Diskussions- oder Kenntnisstand erreicht, der die Überarbeitung der Publika- tion nahelegt, wird durch einen Editor die Überarbeitung der Publikation durch die Autoren initiiert. Sie wird dann in einer neuen Version publiziert und zur Diskussion freigegeben.
+Publikationen und Kommentare werden öffentlich zugänglich gemacht und deren langfristige Verfügbarkeit sichergestellt.
+Der Prozess der Diskussion einer Publikation, deren Überarbeitung und Bereitstel- lung einer neuen Version ist ein iterativer Prozess und kann beliebig oft wiederholt werden, solange durch Autoren oder Publikationsorgane der Bedarf einer Überar- beitung gesehen wird.
+Der Publikationsprozess einer wissenschaftlichen Arbeit ist der Bereitstellung zur Diskussion im Rahmen des beschriebenen Systems vorgelagert. Er umfasst die Er- stellung, wissenschaftliche und formelle Begutachtung und Veröffentlichung der Ar- beit.
+Die inhaltliche und redaktionelle Überarbeitung einer wissenschaftlichen Arbeit so- wie deren erneute Begutachtung und Veröffentlichung erfolgt außerhalb des Sys- tems und wird nicht näher betrachtet.
+
+	Bereitstellung der Publikation
+In NAL-live publizierte wissenschaftliche Arbeiten werden zur Diskussion in das System aufgenommen. Dieser Prozess umfasst die Bereitstellung im System, die inhaltliche Einordnung (Klassifizierung), die Festlegung der organisatorischen Ver- antwortlichkeiten für diese Arbeit innerhalb des Systems und der Freigabe der Pub- likation.
+Der Bereitstellung vorgelagert ist der redaktionelle Publikations- und Review-Pro- zess durch den Herausgeber.
+
+Abbildung 2: Bereitstellung zur Diskussion
+
+	Diskussion
+Nach der erfolgten Bereitstellung und Freigabe einer Publikation innerhalb des Sys- tems muss diese für alle Leser zugänglich sein. Registrierte Anwender können Text- stellen der Publikation markieren und Kommentare dazu verfassen. Ebenso können bereits erstellte Kommentare erneut kommentiert werden. Erstellte Kommentare werden auf formelle (Moderator) und inhaltliche (Editor) Eignung geprüft, ggf. mit einer DOI versehen und innerhalb des Systems als Kommentar veröffentlicht.
+Die Diskussionsphase für eine Publikation kann beendet werden, sobald diese Pub- likation überarbeitet und als neue Version veröffentlicht wird, der Autor die Publika- tion zurückzieht oder der Moderator die Diskussion der Publikation aktiv beendet.
+
+Abbildung 3: Diskussionsphase
+
+	Überarbeitung
+In der Überarbeitungsphase erstellt der Autor eine neue Version der Publikation, die den aktuellen Kenntnisstand u.a. unter Berücksichtigung neuer Forschungsergeb- nisse oder Diskussionsinhalte jn der Publikation.
+Diese neue, überarbeitete Version der Publikation kann erneut den Begutachtungs- und Veröffentlichungsprozess durch den Herausgeber durchlaufen, bevor sie wie- der zur Veröffentlichung und Publikation in das System übernommen wird.
+Mit der Veröffentlichung der neuen Version wird die Kommentarfunktion der Vorgän- gerversionen gesperrt. Der Zugang zu den Kommentaren bleibt aber erhalten.
+Überarbeitung, Begutachtung und Veröffentlichung der neuen Version erfolgen au- ßerhalb des Systems, die Sperrung der Kommentarfunktion, Bereitstellung der neuen Version und Übernahme offener Kommentare in die Diskussion der neuen Version erfolgen im System.
+Die inhaltliche Überarbeitung einer Publikation ist von der Bereitstellung einer Kor- rekturversion zur Behebung geringfügiger Fehler durch den Autor zu unterscheiden.
+
+Abbildung 4: Prozess Überarbeitung
+
+	Archivierung
+Die langfristige Verfügbarkeit einer Publikation und dazu erstellter Kommentare wird über externe Archivsysteme sichergestellt und ist nicht Teil des Systems, die Bereit- stellung der zu archivierenden Artefakte für diese Archivsysteme ist aber Teil der Publikations- und Diskussionsprozesse, ebenso wie die Weitergabe von Publikati- onsinformationen an Publikationsverzeichnisse
+Die Archivierung der Publikation mit Kommentaren ist kein finaler Prozessschritt, sondern erfolgt ereignisgesteuert oder in Zeitintervallen bereits mit der Freigabe und während der Diskussionsphase.
+	Monitoring
+Betreiber und Nutzer der Publikations- und Diskussionsplattform benötigen Informa- tionen über Änderungen in ihrem Verantwortungs- oder Interessensbereich. Die Aufarbeitung und Bereitstellung dieser Informationen ist ein kontinuierlicher Ge- schäftsprozess.
+	Verwaltung
+Die Verwaltung, Anpassung und Pflege des Systems und der registrierten Benutzer ist eine Voraussetzung für den nachhaltigen Betrieb des Systems
+2.5 Stakeholder
+
+Abbildung 5: Interne und externe Stakeholder
+
+In der nachfolgend angeführten Tabelle sind alle Personen, Rollen und Organisati- onen benannt, die im Rahmen der Anforderungserhebung zu dem entwickelnden System berücksichtigt werden sollten, weil sie gegebenenfalls einen direkten oder indirekten Einfluss auf die Anforderungen haben.
+
+Organisationseinheit / Rolle / FunktionZiele/Einfluss/Spezielle Kenntnisse/BereichAuftraggeber: LeopoldinaAuftraggeber für Spezifikation, Erstellung und Be- trieb. gibt die Projektziele und finanziellen und organi- satorischen Rahmenbedingungen vor.
+Inhaltlich verantwortlicher Betreiber des SystemsEditorial BoardDas Editorial Board des AG besteht aus
+* Editorial Manager
+* Section Editor
+* Reviewing Editor
+* Editorial Office
+Die Mitglieder sind die fachlichen Treiber des Projek- tes und legen die umzusetzenden Prozessabläufe, Funktionen und Anforderungen fest.ModeratorDer Moderator führt das Review eingehender Kom- mentare durch und gibt diese frei.
+Er will einen effizienten Überblick über eingehende Kommentare in seinem Zuständigkeitsbereich und die Möglichkeit diese zu bearbeiten.Autorder Autor will seine Publikation zur Diskussion stellen und auf Kommentare/Diskussionsbeiträge reagieren können.
+Er hat keinen direkten Einfluss auf die Ausgestaltung des Systems.KommentatorDer Kommentator will Bestandteile der bereitgestell- ten Publikationen oder andere Kommentare inhaltlich kommentieren und auf diese Kommentare verweisen können. Er hat keinen direkten Einfluss auf die Aus- gestaltung des Systems.LeserDer Leser will für ihn relevante wissenschaftliche Publikationen oder Kommentare finden und nutzen können. Er hat keine Vorkenntnisse und keinen direk- ten Einfluss auf das SystemAdministratorDer Administrator stellt die Betriebsfähigkeit des Sys- tems sicher und führt technische Routinearbeiten durch.BetreiberDer technisch verantwortliche Betreiber des Systems kann ein externer Dienstleister oder Kooperations- partner sein und ist zum Zeitpunkt der Spezifikation noch nicht bekannt.
+Organisationseinheit / Rolle / FunktionZiele/Einfluss/Spezielle Kenntnisse/BereichPublikationsarchiveStellen die langfristige Verfügbarkeit der veröffentlich- ten Publikationsversionen und der freigegebenen Kommentare dazu sicher. Sie stellen Schnittstellen und inhaltliche Vorgaben zur Archivierung bereit.Externe Publikationsver- zeichnisseAutoren, Kommentatoren und der AG streben eine hohe Sichtbarkeit der Publikationen und Beiträge an. Durch die Bekanntmachung von Publikationen und Kommentaren des AG in ausgewählten Publikations- verzeichnissen kann deren Sichtbarkeit und Impact Faktor erhöht werden.ORCIDZentrales Verzeichnis der wissenschaftlichen Auto- ren, bietet Schnittstellen zur Information über re- gistrierte Autoren sowie zur Authentifizierung.Open Source CommunitySoll die aktive Weiterentwicklung des Projektes un- terstützen. Codequalität und -dokumentation sind da- für ebenso Voraussetzungen wie die Einhaltung li- zenzrechtlicher Vorbedingungen.GesetzgeberGibt gesetzliche Rahmenbedingungen vor.SuchmaschinenbetreiberAutoren, Kommentatoren und der AG streben eine hohe Sichtbarkeit der Publikationen und Beiträge an. Suchmaschinenbetreiber sollen Publikationen und Kommentare in ihren Suchindex aufnehmen können.HackerVersuchen evtl. durch ge- oder verfälschte Publikatio- nen und Kommentare die öffentliche Diskussion zu beeinflussen und/oder die Reputation der Autoren o- der des publizierenden Organs zu stören. Der Zugriff auf geschützte nichtöffentliche Daten der Anwender muss ebenfalls verhindert werden.Tabelle 1: Stakeholder
+
+2.6 Organisatorischer und technischer Rahmen
+	Zu erfüllende Standards
+Die folgende Tabelle listet die zu erfüllenden gesetzlichen Normen und Standard auf, die das zu entwickelnde System bzw. der IT-Dienstleister, der das System entwickelt, erfüllen muss:
+
+Bereichzu erfüllender Standard
+/ gesetzliche Norm / VerordnungAnmerkungDatenschutzDSGVOkeine über das DSGVO hinausgehende daten- schutzrechtliche Vorlagen.BarrierefreiheitBITV 2.0 Anlage 1keine über die BITV 2.0 hinausgehende Anforde-
+rungen an die Barrierefreiheit.IT-SicherheitIT-GrundschutzkatalogGenaueres siehe Kapitel nicht-funktionale Anforde- rungenIT-SicherheitOWASPStandards und Handlungsempfehlungen des Open Web Application Security Project (OWASP). Wel- che Standards und Best Practices hier genau zu erfüllen sind, ist in Kapitel nicht-funktionale Anfor-
+derungen beschrieben.Vorgaben an den Soft- wareentwicklungspro- zess des IT-Dienstleis- tersIT-GrundschutzkatalogDie technischen organisatorischen Maßnahmen der IT-Grundschutzkataloge des BSI werden er- füllt, d.h. ein geeignetes Sicherheitssystem auf Ba- sis des BSI Standard 100-1 „Managementsysteme für Informationssicherheit (ISMS)“ ist implemen-
+tiert.Ergonomie SoftwareergonomieDIN EN ISO 9241 EN ISO 14915Normen Teil 11 bis 17, 110,171, 302 und 303 der Normenreihe DIN EN ISO 9241 „Ergonomie der Mensch-System-Interaktion“ und DIN EN ISO 14915 Softwareergonomie für Multimedia-Benut-
+zungsschnittstellen Teil 1UrheberrechtCreative Commons CC- BYIn dem System bereitgestellte inhaltliche Beiträge werden unter der CreativeCommons Lizenz CC-BY
+4.0 veröffentlicht, d.h. Dritte können diese Inhalte in jeder Form weiterbreiten und bearbeiten, für be- liebige Zwecke weiterverwenden, verändern oder
+darauf aufbauen.Tabelle 2: Zu erfüllende Standards
+	Technische Rahmenbedingungen
+Es ist vom AG vorgesehen, dass das System nicht vom AG selbst, sondern von externen Dienstleistern oder kooperierenden Partnern betrieben wird. Spezifi- sche technische Rahmenbedingungen zum Betrieb sind damit nicht vorgegeben
+Die daraus resultierenden nichtfunktionalen Anforderungen zur Übertragbarkeit sind in Kap.4.7 ausgeführt.
+Das System soll den Anwendern jederzeit zur Nutzung zur Verfügung stehen, als Regel-Betriebszeit ist von 24h/Tag an 7d/Woche auszugehen. (s.Kap. 4.7.5)
+
+3 Funktionale Anforderungen
+3.1 Rollen und Rechte
+Ein nicht angemeldeter Anwender (‚Leser‘) hat minimale Berechtigungen zur Nut- zung frei zugänglicher Publikationen und zugehöriger Kommentare.
+Authentifizierte Anwender haben zusätzlich die Berechtigung Dokumente zu kom- mentieren oder auf Kommentare zu antworten.
+In diesem Dokument wird zur Vereinfachung durchgehend und geschlechtsneutral die männliche Form Singular der Rollenbezeichnung verwendet.
+Sollten mehrere Individuen einer Rolle an einem Vorgang beteiligt sein wird dies nur und explizit erwähnt, sofern es in dem jeweiligen Kontext von Relevanz ist.
+Die Zuordnung der funktionalen Rechte zu den Benutzerrollen ist vor der Umset- zung mit dem AG abzustimmen.
+
+BezeichnungBeschreibungLeserJeder Anwender des Systems darf, auch ohne Authentifizierung,
+* veröffentlichte Artikel und Kommentare suchen und im Rahmen der Lizenzbedingungen nutzen.
+* öffentlich zugängliche Informationen zu Autoren von Dokumenten oder Kommentaren einsehenKommentatorJeder authentifizierte Nutzer hat zunächst die Rolle eines Kommentators. Dieser hat alle Berechtigungen des anonymen ‚Lesers‘ und kann zusätz- lich
+* zu allen Publikationen und Kommentaren in dem System Kom- mentare verfassen, für die die Kommentarfunktion freigegeben ist.
+* für seine Kommentare die Begutachtung und Veröffentlichung be- antragen
+* eigene Kommentare im Status ‚in Bearbeitung‘ einsehen, ändern oder löschen, .
+* eigene eingereichte Kommentare im Status vor deren Freischal- tung einsehen oder löschen.
+* Benachrichtigungen bei Änderungen zu einer Publikation abon- nieren,
+* Suchen speichern und Benachrichtigungen bei neuen Ergebnis- sen zu diesen Suchen abonnieren
+* Sein Benutzerprofil bearbeiten
+* Sein Passwort zurücksetzen.ModeratorJeder Anwender der Gruppe der Moderatoren kann vom Editorial Office einem Dokument als dessen Moderator zugewiesen werden.
+Er kann im Kontext der ihm zugewiesenen Dokumente
+* Eingestellte Kommentare vor deren Freigabe einsehen und deren Status ändern (s. Kap. 3.3.3.2)
+Im Kontext der ihm nicht als Moderator zugewiesenen Dokumente hat der Moderator die Berechtigungen eines KommentatorsReview EditorJeder Anwender der Gruppe der Editoren kann vom Editorial Office einem Dokument als dessen Review Editor zugewiesen werden.
+Er kann im Kontext der ihm zugewiesenen Dokumente
+* Eingestellte Kommentare vor deren Freigabe einsehen, reviewen und deren Status ändern (s. Kap. 3.3.3.2).
+Im Kontext der ihm nicht als Editor zugewiesenen Dokumente hat der Edi- tor die Berechtigungen eines Kommentators
+Editorial OfficeJeder Anwender der Rolle ‚Editorial Office‘ kann
+* Stammdatentabellen bearbeiten
+* Benutzerdaten bearbeiten (Rollenzuordnung ändern, (de-)aktivie- ren.
+* Die inhaltliche Klassifikation einer Publikation bearbeiten
+* Die Zuordnung eines Moderators zu einer Publikation bearbeiten
+* Die Zuordnung des Korrespondenzautor zu einer Publikation be- arbeiten
+* Eine neue Version einer Publikation einstellen, bei der er nicht Autor ist.
+* Die Freigabe einer neuen Version einer Publikation auslösen
+* Die Diskussion zu einer Publikation beenden
+* Email-Templates bearbeitenAdministratorDer Administrator hat alle Berechtigungen des Editorial Office und kann zusätzlich
+* Benutzer aus dem System entfernen
+* Publikationen aus dem System entfernenTabelle 3: Rollen
+
+3.2 Fachliches Datenmodell
+
+Abbildung 6: Fachliches Datenmodell
+
+	01 Anwender
+Nutzer der Diskussionsplattform müssen sich als Anwender registrieren um Beiträge zu Dis- kussionen einstellen zu können. Die Angaben zum Anwender dienen neben der Anzeige des Namens, der Kommunikation mit dem Anwender (Email) und der Dokumentation von erforderlichen Einverständniserklärungen vor allem der Kurzinformation anderer Diskussi- onsteilnehmer über den wissenschaftliche Hintergrund des Anwenders.
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungNameJNStringVornameJNStringORCIDNJStringEmailJJStringUsernameJJStringPasswort Einverständnis DSGVO Einverständnis Lizenz
+EinverständnisJ J J
+JN N N
+NString Bool Bool
+Boolverschlüsselt
+Je nach aktuell hinterlegtem Text
+Je nach aktuell hinterlegtem Text
+Je nach aktuell hinterlegtem TextAffiliationNNStringu.a. Arbeitgeber, InstitutFachgebietNNStringQualifikationNNStringu.a. Akademischer GradLinkNNStringBeschreibungNNStringmehrzeiligProfilbildNNGrafikGrafikdatei	02 Publikation
+Die Publikation stellt eine Klammer über alle Versionen einer Publikation (s. 3.2.3, Doku- ment), mindestens eine initiale Version der Publikation muss im System vorhanden sein.
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungMetaDOIJNStringFür alle Versionen einer Publikation gleich	03 Dokument
+Als Dokument wird jede veröffentlichte Version einer Publikation bezeichnet. Diese beinhal- tet den Inhalt der Publikation, deren Metadaten sowie interne Attribute. Das Dokument ist das zentrale Datenobjekt der beschriebenen Publikations- und Diskussionsplattform. Nur die jeweils aktuelle Version einer Publikation soll zur Kommentierung freigegeben sein.
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungMetaDOI DOI
+Metadaten Content FreigabeDatum Status StatusDatum
+StatusUserJ J J J N J J
+NN N J J N N N
+NString String
+
+Date Date
+
+
+Dateibasiert oder XML
+
+	04 Autor
+Autoren sind die Verfasser einer Publikation. Die Autoren verschiedener Versionen einer Publikation können unterschiedlich sein. Autoren müssen nicht zwingend registrierte An- wender in NAL live sein.
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungName Adresse Institution
+Email
+
+ORCID
+AnwenderIDJ N N
+N
+N NN N N
+N
+N NString String String
+String String
+
+
+Semantische Prüfung
+
+
+
+
+Nicht alle Autoren haben eine ORCID
+In System registriert unter …	05 Kommentar
+Ein Kommentar bezieht sich auf eine Textstelle eines Dokumentes oder einen anderen Kommentar.
+
+FeldnamePflicht- feldUniqueTypPrüfung/Vor- belegungBemerkungDokumentNNTextbezugNNKommentarbezug Kommentartext Kommentartyp Kommentarstatus Erstelldatum StatusDatum StatusUser BearbeiterJ J J J J J J JN N N N N N N N	06 Kommentator
+Als Kommentator wird der angemeldete Benutzer voreingestellt, der den Kommentar initial erstellt. Er kann dem Kommentar weitere Ko-Kommentatoren hinzufügen
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungKommentar KommentatorJ JN NAktueller Kommentar Aktueller An-
+wenderKommentar-ID Anwender-ID	07 Interessenkonflikt
+Der Kommentator kann/soll bei Verfassen des Kommentars vorliegende Interessenskon- flikte in Bezug auf die Publikation nennen.
+
+
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungKommentar KommentatorJ JN NAktueller Kom- mentar Aktueller An-
+wenderKommentar-ID Anwender-IDInteressenskonfliktJNString<keiner>	08 Kommentartyp
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungKurzbezeichnung BeschreibungJ NJ
+Für Kommentare sind folgende Typen vorgesehen (inhaltliche Erläuterungen im Glossar)
+* ER	(Error Correction):
+* SC	(Scientific Comment):
+* rSC	(response to Scientific Comment):
+* NP	(New Publication):
+	09 Erweiterte Suche
+Der Anwender kann eine erweiterte Suche nach Attributwerten zusammenstellen und unter einem Namen speichern/wieder aufrufen/ändern. Mit aktivierter ‚Beobachtung‘ erhält der Anwender Mitteilungen zu neuen Suchergebnissen (s. Kap. 3.3.2.8, 3.3.2.9)
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungBezeichnung BeobachtungaktivJ JN NString bool
+False 10 Suchattribute
+Attribute können Eigenschaften des gesuchten Dokumentes oder Kommentares sein. Die in der Suche unterstützten Attribute, Wertebereiche und Operatoren sind vor der Umsetzung mit dem AG abzustimmen.
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungAttribut Operator WertJ J JN N N	11 Alias
+Der Anwender soll im Falle von Namensänderungen angeben können, unter welchen Na- men ebenfalls Publikationen oder Kommentare von ihm vorliegen und gefunden werden können.
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkung
+
+
+Name Vorname
+
+J	N	String
+J	N	String
+
+
+ 12 Stichwort
+Im Publikationsprozess kann jedes Dokument mit einem oder mehreren Stichwörtern zur inhaltlichen Zuordnung versehen werden.
+
+FeldnamePflicht- feldUniqueTyp  Prüfung/ VorbelegungBemerkungStichwortJJString
+
+3.3 Anwendungsfälle
+Die Anwendungsfälle, aus denen sich die funktionalen Anforderungen für die beschrie- bene Publikations- und Diskussionsplattform ableiten wurden in 6 zusammenhängende Blöcke gegliedert.
+
+IDNameBeschreibungGeschäftsprozessEP_001Publikation einstellenAnwendungsfälle im Zusammenhang mit dem Lebenslauf (Einstellen, Veröffentlichen, Überar- beiten, Sperren, Archivieren) eines Dokumen- tesBereitstellung	der PublikationEP_002Publikation nutzenAnwendungsfälle im Kontext der Ansicht und Nutzung freigegebener DokumenteDiskussionEP_003Kommentar erstellenAnwendungsfälle im Kontext der Diskussion freigegebener Dokumente, also insbesondere der Erstellung, Prüfung und Freigabe von Kom- mentarenDiskussionEP_004InformierenAnwendungsfälle im Kontext der Bereitstellung und Darstellung von Statusinformationen für au- thentifizierte AnwenderMonitoringEP_005Benutzer verwaltenAnwendungsfälle im Kontext der Registrierung, Authentifizierung und Verwaltung von Nutzern des Systems.VerwaltungEP_006Stammdaten verwal- tenAnwendungsfälle im Kontext der Verwaltung und Konfiguration des Systems.VerwaltungTabelle 4: Übersicht Epics
+Die in Kap.2.4 identifizierten Geschäftsprozesse ‚Überarbeitung‘ und ‚Archivierung‘ sind in EP_001 ‚Dokument einstellen/verwalten‘ abgedeckt.
+	EP_001 Dokument einstellen / verwalten
+Das Verfassen einer wissenschaftlichen Arbeit, deren Begutachtung und re- daktionelle Bearbeitung bis zur eigentlichen Publikation liegen außerhalb des Kontextes des beschriebenen Systems.
+EP_001 umfasst im engeren Sinne die daran anschließende Aufnahme der Publikation in die beschriebene Publikations- und Diskussionsplattform, die Bearbeitung der zugehörigen Metadaten und die Freigabe zur Diskussion.
+Als Erweiterung der Aufnahme eine neuen Publikation umfasst die Aufnahme einer neuen Version einer bestehenden Publikation die zusätzlichen Schritte der Sperre der Diskussion zur Vorversion und, im Falle einer Korrekturver- sion, der Übernahme der Kommentare der Vorversion in die aktuelle Version.
+Eine Lösung zur Anbindung oder Integration des Publikationsprozesses (z.B. dafür genutzter Redaktionssysteme) wird ausdrücklich begrüßt.
+
+
+
+
+Abbildung 7: Anwendungsfälle EP_001
+	UC_DI_001 Publikation in das System aufnehmen
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, das Dokument in das System aufzunehmen.Vorbedingung/ Auslösendes EreignisBegutachtung und Veröffentlichung des Dokumentes ist abgeschlos- sen, dem Dokument wurde ein DOI zugewiesen.AkteurEditorial OfficeNormalablaufDer Akteur
+nimmt das Dokument als Datei oder über eine andere geeignete Schnittstelle in das System auf
+Unterstützt werden sollen mindestens das OJS3-kompatible XML-For- mat als Datei oder eine OJS3-Kompatible REST-Schnittstelle.
+Dabei wird unterschieden zwischen
+* Neue Publikation
+* Korrekturversion einer Publikation (Diskussion der Vorversion wird übernommen/ fortgesetzt)
+* neue überarbeitete Version einer Publikation (Diskussion der Vorversion wird gesperrt)
+Jede Version erhält eine neue Versionsnummer.
+
+
+Nachbedingung(en)/ErgebnisDie Publikation ist im System als Vorschau verfügbar und noch nicht freigeschaltet.
+Der Akteur bearbeitet die Metadaten zu dem Dokument (UC_DI_002) Der Akteur legt die Zuständigkeiten für die Publikation im System fest (UC_DI_003)
+Das System versendet Mitteilungen an relevante Anwender (UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umset-
+zung mit dem AG abzustimmen.PrioritätMuss	UC_DI_002 Metadaten bearbeiten
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, die gespeicherten Attribute zu einem Dokument nachträglich zu ändern.Vorbedingung/ Auslösendes EreignisVersion ist in das System aufgenommen
+Der Akteur stellt Änderungsbedarf für ein oder mehrere Metadaten zu dem Dokument fest.AkteurEditorial OfficeNormalablaufDer Akteur wählt das Dokument aus und öffnet dessen Metadaten zur Bearbeitung.
+Nach Änderung eines Metadatums (oder mehrerer Metadaten) speichert der Akteur das Dokument mit den geänderten Metadaten im System.Nachbedingung(en)/ErgebnisDas System versendet Mitteilungen an relevante Anwender (s.
+UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umsetzung mit dem AG abzustimmen.PrioritätSollAkzeptanzkriterienÄnderung ist für Leser sichtbar
+Änderungen wirkt sich auf Suchergebnisse/Beobachtungen aus	UC_DI_003 Zuständigkeiten festlegen / ändern
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, einem Dokument die zuständigen Bearbeiter zuzuordnen.Vorbedingung/ Auslösendes EreignisNeues Dokument ins System aufgenommen Änderung der ZuständigkeitenAkteurEditorial OfficeNormalablaufDer Akteur legt die Zuständigkeit für ein Dokument aus Anwendern mit der jeweiligen Rollenzugehörigkeit
+Moderator
+Review Editor (für Kommentare zum Dokument)
+Das System versendet Mitteilungen an betroffene Anwender
+(UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umset- zung mit dem AG abzustimmen.Nachbedingung(en)/ErgebnisMitteilung an zuständige Mitarbeiter wurde erstellt u. versandtPrioritätMuss
+
+	UC_DI_004 Vorschau des Dokumentes
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, ein eingestelltes aber noch nicht frei verfügbares Dokument vor der Freischaltung einzu- sehen und sie auf korrekte Darstellung zu prüfen.Vorbedingung/ Auslösendes EreignisDokument (Neue Publikation/ Neue Version einer Publikation) wurde vom Editor ins System aufgenommenAkteurEditorial OfficeNormalablaufAkteur öffnet das Dokument zur AnsichtNachbedingung(en)/ErgebnisAkteur kann das Dokument vollständig betrachten und
+Das System stellt Anwendern ohne die Berechtigung zur Vorschau keine Informationen zu dem Dokument bereit (Dokumentenliste, Su-
+chergebnisse, Beobachtungen) und keine Anzeige des DokumentesPrioritätMuss	UC_DI_005 Dokument freischalten
+
+KurzbeschreibungDas System muss es dem Akteur ermöglichen, eingestellte Dokumente allen Anwendern (authentifiziert oder nicht) zur Nutzung (EP_002) zu- gänglich zu machen.Vorbedingung/ Auslösendes EreignisNeues Dokument wurde ins System aufgenommenAkteurEditorial OfficeNormalablaufDer Akteur ändert den Status des Dokumentes auf ‚freigegeben‘Nachbedingung(en)/ErgebnisDas System versendet Mitteilungen an betroffene Anwender (UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umset-
+zung mit dem AG abzustimmen.PrioritätMuss	UC_DI_006 Dokument sperren
+
+KurzbeschreibungDas System soll dem Editor die Möglichkeit bieten, die Kommentar- funktion (UC_KO_001) für ein Dokument zu sperren und diese Sperre wieder aufzuheben.Vorbedingung/ Auslösendes EreignisEine neue Version der Publikation wurde zum Review eingereicht oder
+Der Autor beantragt, die Publikation zurückzuziehen und die Diskus- sion zu beenden.AkteurEditorial OfficeNormalablauf(extern)
+Der Akteur ändert den Status des Dokumentes auf ‚zurückgezogen‘, ‚in Überarbeitung‘ oder ‚gesperrt‘
+Das System sperrt die Kommentarfunktion UC_KO_001 zu dem Doku- mentNachbedingung(en)/ErgebnisDas Dokument ist mit Kommentaren weiter nach EP_002 nutzbar, aber als ‚‘zurückgezogen‘, ‘in Überarbeitung‘ oder ‚gesperrt‘ gekennzeichnet und nicht weiter kommentierbar.
+Das System versendet Mitteilungen an betroffene Anwender
+(UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umset- zung mit dem AG abzustimmen.PrioritätSoll
+
+	UC_DI_007 Dokument an Verzeichnisse melden
+
+KurzbeschreibungWenn ein Dokument (Publikation, Version oder Kommentar mit DOI) im System freigeschaltet wurde soll das System die benötigten Informatio-
+nen zu dem Dokument und der Veröffentlichung an angebundene Pub- likationsverzeichnisse übertragen.Vorbedingung/ Auslösende EreignisseVeröffentlichung/Freischaltung einer Version einer Publikation im Sys- tem (UC_DI_005)
+Freigabe eines mit DOI versehenen Kommentares (UC_KO_003)AkteurSystemNormalablaufDass System überträgt die Informationen zu dem Dokument (Publika- tion, Version oder Kommentar mit DOI) über die in Kap. 3.5.8 spezifi- zierten Schnittstellen(n) an die jeweiligen PublikationsverzeichnisseNachbedingung(en)/ErgebnisInformationen zum Dokument sind in den angebundenen Publikations- verzeichnis verfügbarPrioritätSoll	UC_DI_008 Dokument an Archiv melden
+
+KurzbeschreibungWenn eine Version einer Publikation veröffentlicht wurde soll das Sys-
+tem eine Mitteilung über die Veröffentlichung an angebundene Publika- tionsverzeichnisse übertragenVorbedingung/ Auslösendes EreignisVeröffentlichung/Freischaltung einer Version einer Publikation im Sys- tem (UC_DI_005)
+Freigabe eines mit DOI versehenen Kommentares (UC_KO_003),AkteurSystemNormalablaufDass System überträgt Dokument (Publikation, Version oder Kommen- tar mit DOI) und/oder zugehörige Metadaten über die in Kap. 3.5.9 spe-
+zifizierten Schnittstellen(n) an die angebundenen ArchivsystemeNachbedingung(en)/ErgebnisDokument ist in dem/den angebundenen Archivsystemen verfügbarPrioritätMuss	UC_DI_009 Dokument löschen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, ein Dokument mit allen Versionen und Kommentaren aus dem System zu entfernen.
+Die komplette Entfernung eines Dokumentes aus dem System ist nicht als Regelfall im Lebenslauf einer Publikation vorgesehen, soll aber z.B. für Wartungs- und Testzwecke ermöglicht werden.Vorbedingung/ Auslösendes Ereignis-AkteurAdministratorNormalablaufDer Administrator wählt das zu löschende Dokument aus und betätigt die Löschfunktion
+Das System entfernt das Dokument und zugehörige Kommentare aus dem SystemNachbedingung(en)/ErgebnisDie Publikation ist mit allen Metadaten und Kommentaren aus System entfernt.
+Der Datenbestand in externen Archivsystemen bleibt unverändert Löschung ist in logfiles dokumentiert.
+Das System versendet Mitteilungen an betroffene Anwender
+(UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umset- zung mit dem AG abzustimmen.PrioritätSoll
+
+	EP_002 Dokumente nutzen
+Unter ‚EP_002 Dokumente nutzen‘ werden die funktionalen Anforderungen zusammenge- fasst, die sich aus dem Ziel ergeben, Publikation und die wissenschaftliche Diskussion dazu öffentlich zugänglich zu machen.
+
+Abbildung 8 UseCases zu EP_002 Dokumente nutzen
+
+
+
+
+
+Abbildung 9: Dokumentansicht
+Abbildung 9: Dokumentansicht) dient nur zu Veranschaulichung der beschriebenen An- wendungsfälle. Alternativvorschläge, insbesondere in Bezug auf intuitive Graphik, sind ausdrücklich willkommen. Bedienelemente wie Gliederungsansicht, Metadatenansicht und Zeitachse sollten ein- und ausblendbar sein.
+
+
+	UC_DU_001 Dokument suchen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, Dokumente (Publi- kationen oder Kommentare) im Datenbestand des Systems zu suchen.Vorbedingung/Auslösendes Er- eignisDer Akteur betätigt die Suchfunktion nach Eingabe eines oder mehrere Suchbegriffe in einem Suchtextfeld.RolleJederNormalablaufDe Akteur gibt einen oder mehrere Suchbegriffe ein und betätigt die Suchfunktion.
+Das System sucht zu den angegebenen Suchbegriffen in seinen Da- tenbeständen nach passenden Publikationen oder Kommentaren.
+Durchsucht werden Titel, Autoren, Stichworte und Klassifikationsdaten, Veröffentlichungsdaten (DOI, Schriftenreihe, Datum), Abstracts und Dokumenttext
+Das System prüft vor der Anzeige der Suchergebnisse deren jeweilige Sichtbarkeit/Zugänglichkeit für den aktuellen Akteur und entfernt nicht zugängliche Dokumente aus der Ergebnisliste
+
+
+Das System stellt dem Akteur eine absteigend priorisierte Trefferliste bereit. Die konkreten Inhalte und Ausgestaltung der Trefferliste sind vor der Umsetzung mit dem AG abzustimmen.VariantenDer Akteur kann eine erweiterte Suchfunktion öffnen und gezielt zu ein- zelnen Attributen Suchkriterien angeben. Konkrete Inhalte und Darstel-
+lung dieser erweiterten Suchfunktion sind mit dem AG abzustimmen.Nachbedingung(en)/ErgebnisDer Akteur erhält eine Listenansicht der Suchtreffer.PrioritätMussAkzeptanzkriterien* Die Ergebnisliste zeigt mindestens Titel, Autoren (in Kurzform), Veröffentlichungsdatum, Version, Dokumenttyp und für Kom- mentare die kommentierte Publikation) an. Konkrete Inhalte und Darstellung der Ergebnisliste sind mit dem AG abzustim- men.
+* Das System bietet dem Akteur die Möglichkeit, erweiterte Infor- mationen zu einem Eintrag in der Suchergebnisliste einzuse- hen. Dies beinhaltet mindestens eine hierarchische Anzeige des Suchtreffers im Kontext zu Themenbaum/Schriften- reihe/Publikation und Version. Konkrete Inhalte und Darstel- lung dieser erweiterten Informationen sind mit dem AG abzu- stimmen.
+* Bei der Eingabe von Wortteilen soll das System passende Be- griffe zur Autovervollständigung vorschlagen. Diese kann der Akteur übernehmen und/oder die Suche weiter anpassen.
+* Das System bietet dem Akteur die Möglichkeit, aus einem Ein- trag in der Suchergebnisliste direkt in die Ansicht des zugehöri- gen Dokumentes zu wechseln.
+Falls der ausgewählte Eintrag eine Textstelle ist, soll diese in der Dokumentansicht optisch hervorgehoben dargestellt werden.
+Falls der ausgewählte Eintrag ein Kommentar ist, soll in der Dokumentansicht die kommentierte Textstelle und der als Suchergebnis ausgewählte Kommentar hervorgehoben
+dargestellt werden.	UC_ DU_002 Dokument anzeigen
+
+KurzbeschreibungDer Akteur soll freigeschaltete Dokumente einsehen und lesen können.Vorbedingung/Auslösendes Er- eignisDer Akteur öffnet die Dokumentansicht für ein Dokument über
+- einen Verweis (URL) auf eine Version der Publikation
+- einen Verweis (URL) auf einen zugehörigen Kommentar
+- einen Verweis (URL) auf eine referenzierte Textmarke in Doku- menttext oder KommentarRolleJederNormalablaufDas System öffnet die Dokumentansicht des gewählten Dokumentes.
+
+Wenn der Akteur einen Verweis innerhalb des Dokumentes anklickt (z.B. eine Quellenangabe im Literaturverzeichnis, eine Fußnote) soll die Do- kumentansicht an die referenzierte Stelle springen und dem Akteur auch den Rücksprung an die angeklickte Stelle ermöglichen
+Wenn der Akteur in der Zeitleiste eine bestimmte Version oder einen der zugehörigen Kommentare anklickt soll das System in der Dokumentan- sicht die korrekte Dokumentversion darstellen.
+
+
+Wenn der Akteur auf einen Kommentar in der Zeitleiste klickt soll das System die im Ursprungskommentar referenzierte Textstelle in der Do- kumentansicht hervorgehoben darstellen und den sichtbaren Dokument- ausschnitt so wählen, dass die referenzierte Textstelle angezeigt wird.Nachbedingung(en)/ErgebnisPrioritätMussAkzeptanzkriterienFalls das Redaktionssystem keine ‚responsive‘-Darstellung der Doku- mente bereitstellt muss die Anwendung eine skalierbare Darstellung des Dokumentes sicherstellen., also die ganzseitige Ansicht des Dokumen- tes, die Ansicht in Originalgröße und geeignete Zoomzwischenstufen an- bieten.
+Die Dokumentansicht soll zur vereinfachten Navigation im Dokument eine Gliederungsansicht anzeigen können.
+Die Dokumentansicht soll dem Akteur zur vereinfachten Nachverfolgung der Diskussion zu einem Dokument einen chronologischen Verlauf der Dokumentversionen und Kommentare zeigen. Antworten auf einen Kom- mentar werden dazu dem Ursprungskommentar zugeordnet.
+Das System soll dem Akteur die Möglichkeit bieten, Dokumente und Kommentare auf verschiedenen Displaygrößen (Desktop-Browser, Tab- let) zu betrachten und zu lesen. (s.Kap.3.3.6.7)
+In der ersten Ausbaustufe ist das System für die Anzeige von Publikati- onen bis (im Mittel xxx/maximal yyy Wörtern) vorgesehen. Das System soll auch für die ausreichend performante Anzeige längerer Dokumente skalierbar sein (s. Kap. 4.5).	UC_DU_003 Dokument exportieren
+
+KurzbeschreibungDas System soll dem Akteur ermöglichen, aus einem Dokument eine PDF-Datei mit dem korrekt dargestellten Dokumentinhalt zu erzeugen
+und außerhalb des Systems weiterzuverwendenVorbedingung/Auslösendes Er- eignisDer Akteur löst die Exportfunktion für ein Dokument aus.RolleJederNormalablaufDas System erzeugt aus dem angezeigten Dokument eine PDF-Datei und stellt diese dem Anwender zum Download bereit.Nachbedingung(en)/ErgebnisDer Anwender kann die erzeugte PDF-Datei herunterladen und beliebig weiterverwenden.PrioritätMussAkzeptanzkriterienDie Darstellung des Dokumentes in der Exportdatei soll der Darstellung der Publikation in der Druckversion entsprechen.
+Die erzeugte PDF-Version soll auch die Gliederungsansicht und
+Sprungmarken im Dokument unterstützen sowie anklickbare Verweise auf externe Quellen (URLs).	UC_DU_004 Kommentare anzeigen
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, die Kommentare zu einer Publikation in deren zeitlichen und textuellen Kontext zu be- trachten.Vorbedingung/Auslösendes Er- eignisDer Akteur öffnet die Dokumentansicht zu einer Publikation und die Zeitleiste mit den Versionen und Kommentaren zu der Publikation.RolleJederNormalablaufDas System stellt die Zeitleiste mit den Versionen der angezeigten Publikation und den Kommentaren zur jeweiligen Version chronolo- gisch sortiert dar. Antworten auf Kommentare werden in der Zeitleiste
+
+
+dem Ursprungskommentare nachgeordnet dargestellt und nicht unab- hängig
+in der Zeitleiste eingereiht. Die geeignete und damit initiale Darstellung der Kommentare ist vom verfügbaren Platz (Bildschirmgröße, Anzahl und Umfang der Kommentare) abhängig, daher werden 2 Varianten für
+die Darstellung eines Kommentars beschrieben.Variante KurzformIn der Kurzansicht in der Zeitleiste werden dargestellt
+* Erstkommentator (Kurzform, evtl. nur Initialen),
+* erste 30-50 Zeichen des Kommentartextes
+* Icon zum Kommentartyp
+* DOI-Icon mit URL/DOI des Kommentars (sofern vorhanden)Variante Erweiterte AnsichtIn der erweiterten Ansicht werden dargestellt:
+* Alle Kommentatoren
+* Vollständiger Kommentartext
+* Icon zum Kommentartyp
+* DOI in Textform mit hinterlegter URL (sofern vorhanden)
+Alle Vorfahren und Nachkommen des aktuellen Kommentars werden in der Kurzform dargestellt.Variante nicht öffentliche K.Nicht öffentliche Kommentare:
+Das System zeigt angemeldeten Benutzern auch nicht freigeschaltete Kommentare, sofern diese die Berechtigung zur Ansicht gesperrter Kommentare haben:
+Nicht öffentliche Kommentare werden von freigeschalteten Kommenta- ren unterscheidbar dargestellt.
+Editoren, Moderatoren und Mitglieder des EO sehen alle Kommentare.
+Andere Anwender sehen ihre eigenen Kommentare, auch wenn diese nicht freigeschaltet oder abgelehnt wurden.Nachbedingung(en)/ErgebnisBei Auswahl eines Kommentars wird die referenzierte Textstelle in der Dokumentansicht hervorgehoben dargestelltPrioritätMussAkzeptanzkriterien* Das System muss dem Akteur die Möglichkeit bieten, auf einen Kommentar nach Kap. 3.3.3.1, UC_KO_001) zu antworten. Wenn der Anwender noch als registrierter Benutzer authentifi- ziert ist, bietet ihm das System zunächst die Möglichkeit zur Authentifizierung oder Neuregistrierung, um dann den Dialog zur Kommentarfunktion zu öffnen.
+* Wenn der Akteur den Fokus/Hover/ auf einen der Kommentato- ren setzt soll das System die in Kap. 3.3.2.6, (UC_DU_006) be- schriebenen Informationen zu diesem Anwender darstellen.
+* In den Kommentaren hinterlegte Grafiken sollen passend ska- liert oder als Verweis angezeigt werden
+* In Kommentaren verwendete URLs müssen unterstützt, d.h. anklickbar sein. Die angeklickte Ressource soll ein einem neuen Browser-Tab oder -fenster geöffnet werden.
+* Der aktuelle Status des Kommentars (s. Kap.3.3.3.2, UC_KO_003), soll für den Akteur in jeder Ansicht erkennbar sein.
+* Der Kommentartyp des Kommentars (s. Kap.3.3.3.2, UC_KO_003), soll für den Akteur in jeder Ansicht erkennbar sein.
+
+	UC_DU_005 In Dokument oder Kommentar suchen
+
+KurzbeschreibungDas System soll dem Anwender die Möglichkeit bieten, innerhalb des aktuell angezeigten Dokumentes nach Wörtern oder Textfragmenten zu suchen.Vorbedingung/Auslösendes Er- eignis-RolleJederNormalablaufDer Akteur gibt die zu suchende Zeichenfolge ein.
+Das System durchsucht das aktuell angezeigte Dokument und zugehö- rige Kommentare auf Vorkommen dieser Zeichenfolge
+Das System kennzeichnet gefundene Vorkommen der Zeichenfolge in der Dokumentansicht und KommentarenNachbedingung(en)/ErgebnisPrioritätSollAkzeptanzkriterienDas System hebt deren Vorkommen der Textfolge im Dokument hervor und springt zu dem ersten Vorkommen im Dokumenttext.
+Das System hebt Kommentare in der Zeitleiste hervor, die diese Zei- chenfolge enthalten
+Das System hebt in den dem Dokument zugeordneten Kommentaren Vorkommen der gesuchten Zeichenfolge hervor.	UC_DU_006 Informationen zu Autor/Kommentator einsehen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, zu einem Autor ei-
+ner Publikation oder Kommentares zusätzliche Informationen abzuru- fen.Vorbedingung/Auslösendes Er- eignisZu dem Autor einer Publikation oder eines Kommentares liegen in der Benutzerverwaltung weiterführende Informationen vor
+- Freitextfeld oder
+    - Verweis auf dessen ORCID-Eintrag. Der Akteur kann Informationen abrufen zu einem Autor einer Publikation
+- in einer Suchergebnisliste
+    - in der Dokumentansicht der Publikation einem Verfasser eines Kommentars
+- in der Zeitleiste der Dokumentansicht einer Publikation
+- In einer SuchergebnislisteRolleJederNormalablaufDer Akteur klickt den angezeigten Autor/Kommentator an
+Das System zeigt die öffentlich zugänglichen Informationen aus der Benutzerverwaltung zu dem gewählten Anwender an
+Hat der Autor/Kommentator in der Benutzerverwaltung seine ORCID hinterlegt ruft das System über die in Kap. 3.5.2, IF_002 ORCID be- schriebene Schnittstelle die verfügbaren Informationen zu dem Anwen- der ab.
+Auswahl und Darstellung der anzuzeigenden Informationen zu einem Anwender sind vor der Umsetzung mit dem AG abzustimmen.
+Ruft der Akteur Angaben zu dem Verfasser eines Kommentators auf, sollen zusätzlich zu den Benutzerinformationen die von dem Kommen- tator hinterlegten Interessenskonflikte mit der kommentierten Publika-
+tion dargestellt werden.Nachbedingung(en)/ErgebnisPrioritätMussAkzeptanzkriterienOptional kann das System zusätzlich eine Liste der Publikationen/Kom- mentare des Anwenders im System zu zeigen.
+
+	UC_DU_007 Link teilen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, eine URL als Refe- renz auf eine oder mehrere markierte Textstellen in Dokument oder Kommentar zu erzeugen und weiterzugeben.
+Diese URL soll die Ansicht der Textstelle im Dokument öffnen (s. UC_DU_002Vorbedingung/Auslösendes Er- eignisDer Akteur wählt in der Dokumentansicht das betrachtete Dokument,
+eine Textstelle in dem Dokument, einen Kommentar oder eine Text- stelle in einem Kommentar ausRolleJederNormalablaufDer Akteur wählt eine Textstelle in Dokument oder Kommentar aus Der Akteur aktiviert die ‚Link teilen‘-Funktion.
+Das System stellt dem Akteur eine URL als Verweis auf die gewählte Textstelle bereit
+Der Akteur gibt diese URL an einen Dritten weiter. Dieser öffnet die URL (in einem Browserfenster),Nachbedingung(en)/ErgebnisDas System zeigt das Dokument und die gewählte Textstelle an, die Textstelle wird hervorgehoben dargestellt.PrioritätSollAkzeptanzkriterienDie Bereitstellung der URL erfolgt zumindest über die Zwischenablage, Weitere Kommunikationswege zur Weitergabe der Referenz können unterstützt werden.
+Das System prüft vor der Darstellung der referenzierten Textstelle de- ren Verfügbarkeit für den aktuellen Anwender. Bei Aufruf nicht verfüg- barer oder gesperrter Dokumente/Kommentare wird dem aufrufenden
+Anwender eine aussagekräftige Meldung angezeigt	UC_DU_008 Suche speichern
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, erstellte Suchanfra- gen zu speichern, wiederzuverwenden, zu ändern oder löschen.Vorbedingung/Auslösendes Er- eignisDer Akteur führt eine Suche nach Dokumenten/Kommentaren innerhalb des Systemdatenbestandes durch (UC_DU_005)RolleAuthentifizierter AnwenderNormalablaufDer Akteur speichert die Suchabfrage unter Angabe einer Bezeichnung Der AkteurNachbedingung(en)/ErgebnisDie Suchabfrage mit der vergebenen Bezeichnung gespeichertPrioritätSollAkzeptanzkriterienDie Suchanfrage ist für den Anwender session- und geräteübergreifend verfügbar und durchführbar.
+Der Akteur kann jede seiner gespeicherten Suchanfragen verändern. Der Akteur kann jede seiner gespeicherten Suchanfragen löschen.
+Eine gespeicherte Suche ist nur für den Ersteller sichtbar.
+
+	UC_DU_009 Dokument/Suche beobachten
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, Dokumente und Suchabfragen so zu kennzeichnen, dass er von dem System über Än- derungen der Ergebnismengen informiert wird (s. Kap. 3.3.4.10,
+UC_DB_010)Vorbedingung/Auslösendes Er- eignisDer Akteur betrachtet ein Dokument oder eine Dokumentliste Der Akteur erstellt eine Suchabfrage oder führt diese ausRolleAuthentifizierter AnwenderNormalablaufDer Akteur aktiviert oder deaktiviert die Beobachtung eines Dokumen- tes oder einer Suchabfrage
+
+
+Nachbedingung(en)/ErgebnisBei abonnierten Dokumenten löst das System eine Mitteilung an den beobachtenden Akteur aus,
+* wenn eine neue Version des Dokumentes freigegeben wurde,
+ * wenn ein neuer Kommentar zu dem Dokument freigegeben wurde Bei beobachteten Suchen löst das System eine Mitteilung an den Er- steller der Suche aus,
+* wenn neue Ergebnisse zu der Suchabfrage gefunden werden.PrioritätSollAkzeptanzkriterien* Die Mitteilungen sollen einen anklickbaren Link auf die Suchtreffer (Dokumente/Kommentar) enthalten.
+* Die inhaltliche Ausgestaltung der Mitteilungstexte ist vor der Um- setzung mit dem Auftraggeber abzustimmen.
+* Der Akteur soll Abonnements auf Dokumente oder Suchabfragen wieder aufheben können.
+* Prüfung auf Neuigkeiten und Versand der Mitteilungen können er- eignisgesteuert (bei Freigabe neuer Dokumente/Kommentare) oder periodisch erfolgen, bei periodischem Mitteilungsversand soll das
+Zeitintervall durch den Anwender konfigurierbar sein (z.B. täg- lich/wöchentlich)
+
+ UC_DU_010 Zitation exportieren
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten,
+die Metadaten zu dem betrachteten Dokument in den gängigen Aus- tauschformaten für Literaturverwaltungssoftware herunterzuladenVorbedingung/Auslösendes Er- eignisDer Akteur will das betrachtete Dokument in einer eigenen Arbeit zitie-
+ren und die für die Zitation nötigen Metadaten direkt in einem weiterver- wendbaren Format aus dem System übernehmen.RolleJederNormalablaufDer Akteur klickt die Schaltfläche zum Export der Metadaten an
+Das System zeigt einen Dialog zur Auswahl des zu verwendenden For- mates und Zitationsstiles
+Das System stellt die Exportdatei entsprechend der Auswahl zusam- men und bietet diese zum Download an.
+Die Exportdatei wird lokal beim Akteur mit der Literaturverwaltungssoft- ware geöffnet bzw. in diese importiert.
+Alternativ: Anzeige der Datei in einem neuen BrowsertabNachbedingung(en)/ErgebnisAkteur kann die Datei herunterladen und weiterverwenden.
+Das System speichert die Auswahl zu Exportformat und Zitationsstil
+sessionübergreifend und stellt diese bei erneutem Aufruf der Export- funktion als Vorauswahl wieder her.PrioritätMussAkzeptanzkriterienUnterstützt werden sollen mindestens die Exportformate Bibtex4 und RIS5 unter Verwendung einer Auswahl an Zitationsstilen.
+
+
+
+
+
+
+
+4 http://www.bibtex.org/Format/
+5 Research Information System, https://de.wikipedia.org/wiki/RIS_(Dateiformat)
+
+
+	EP_003 Kommentar erstellen
+
+Abbildung 10: UseCases zu EP_003 Kommentare erstellen
+
+
+
+
+Abbildung 11: Aktivitätsdiagramm EP_003 Kommentar erstellen
+
+
+	UC_KO_001 Kommentar erstellen
+
+KurzbeschreibungDas System muss dem Kommentator die Möglichkeit geben, Textstel- len in freigegebenen Dokumenten oder Kommentaren zu kennzeich- nen, einen Kommentartext dazu zu verfassen und zur Freigabe einzu- reichen.
+Der Kommentator kann den Kommentar als potentiellen wissenschaftli-
+chen Kommentar kennzeichnen und damit Begutachtung und Vergabe einer DOI für den Kommentar beantragen.Vorbedingung / Auslösendes EreignisFreigegebene Publikation oder freigegebener Kommentar
+Der Anwender will einen Kommentar zu einer Textstelle erstellen. Der Anwender will eine Antwort auf einen Kommentar erstellen.Akteur(1) Authentifizierter Anwender
+(2) Nicht authentifizierter AnwenderNormalablauf* Der Akteur öffnet das Dokument
+* Akteur markiert eine oder mehrere Textstellen in Dokument oder ei- nen anderen Kommentar als Referenz
+* Akteur (1) erstellt einen neuen Kommentar zu der Referenz
+* Der Akteur verfasst Kommentartext
+* Akteur ergänzt ggf. weitere Kommentatoren
+* Akteur kennzeichnet den Kommentar ggf. als potentiellen SC
+* Akteur reicht Kommentar einAlternativablaufBetätigt Akteur (2) als nicht authentifizierter Leser die Kommentarfunk- tion, fordert das System ihn zunächst zur Anmeldung/Registrierung auf. Nach erfolgreicher Authentifizierung leitet das System den Akteur wie- der zu dem geöffneten Dokument zurück, der Normalablauf erfolgt wie
+beschrieben.Nachbedingung(en)/ErgebnisDer Kommentar ist dem Moderator/EO zur Prüfung zugeordnet Das System versendet Mitteilungen an betroffene Anwender
+(UC_DB_009), konkrete Inhalte und Empfänger der Mitteilung sind vor der Umsetzung mit dem AG abzustimmen.Akzeptanzkriterien* Antworten auf Kommentare enthalten immer denselben Bezug auf die kommentierte Textstelle wie der Ursprungskommentar.
+* Wenn der Akteur noch nicht als registrierter Benutzer authenti- fiziert ist, bietet ihm das System zunächst die Möglichkeit zur Authentifizierung oder Neuregistrierung, um nach erfolgreicher Authentifizierung den Dialog zur Kommentarfunktion zu öffnen. URLs im Kommentartext müssen funktional unterstützt werden und geöffnet werden können, insbesondere für interne URLs auf markierte Textstellen im Dokument (s. Kap. 3.3.2.7 ‚Link teilen‘) Weitere Formatierungsmöglichkeiten des Kommen- tartextes sind willkommen aber nicht zwingend erforderlich.
+* Kommentator soll Grafiken (jpg, png, svg) im Text verwenden können. Die maximal zulässige Größe der Grafik soll konfigu- rierbar sein.
+* Nicht authentifizierten Lesern muss die Kommentar-Funktion ebenfalls angezeigt werden.PrioritätMuss
+
+	UC_KO_003 Kommentarstatus ändern
+
+Abbildung 12:Zustandsdiagramm Kommentare
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, den Status eines erstellten Kommentars.Vorbedingung / Auslösendes EreignisStatusübergängeAkteurKommentator, EO, Moderator, ReviewerNormalablaufDer Kommentator muss den Status in ‚eingereicht‘ ändern können
+EO und Moderator müssen den Status ändern können von eingereicht in ‚verworfen‘, ‚freigeschaltet‘ oder ‚gesperrt‘
+Der Reviewer muss den Status ändern können in ‚akzeptiert‘ oder ‚ab- gelehnt‘Nachbedingung(en)/ErgebnisKommentare mit dem Status ‚freigeschaltet‘ oder ‚gesperrt‘ sind für alle genannten Akteure sichtbar
+Kommentare mit DOI sind mit dem Übergang zu ‚freigeschaltet‘ analog zu Publikationen an Archive und Publikationsverzeichnisse gemeldet . Das System versendet Mitteilungen an betroffene Anwender (UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umset-
+zung mit dem AG abzustimmen.PrioritätMuss
+
+	UC_KO_004 Kommentar löschen
+
+KurzbeschreibungAls Kommentator will ich einen Kommentar vor der Einreichung wieder verwerfen und vollständig löschen können.
+Als Editorial Office will ich Kommentare nach deren Prüfung als formell und inhaltlich unzureichende Kommentare verwerfen und vollständig
+aus dem System entfernen können.Vorbedingung / Auslösendes EreignisBearbeitung und verwerfen durch Kommentator Prüfung und verwerfen durch Editorial OfficeAkteurKommentator, Editorial OfficeNormalablaufAkteur verwirf den KommentarNachbedingung(en)/ErgebnisKommentar ist vollständig aus dem System entfernt.
+Das System versendet Mitteilungen an betroffene Anwender
+(UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umset- zung mit dem AG abzustimmen.PrioritätSoll	UC_KO_005 Co-Kommentatoren bearbeiten
+
+KurzbeschreibungAls Kommentator will ich weitere Anwender als inhaltlich beitragende Co-Kommentatoren zu meinem Kommentar hinzufügenVorbedingung / Auslösendes EreignisEin Kommentator hat einen Kommentar erstellt.AkteurKommentatorNormalablaufWährend der Akteur einen Kommentar bearbeitet soll das System ihm die Möglichkeit bieten, weitere Anwender in die Liste der Kommentato- ren hinzuzufügen oder daraus zu entfernen.
+Der aktuell angemeldete Anwender kann sich selbst nicht aus der Liste der Kommentatoren entfernen.Nachbedingung(en)/ErgebnisDas System versendet Mitteilungen an betroffene Anwender (UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umset- zung mit dem AG abzustimmen.PrioritätSoll	UC_KO_006 Kommentar prüfen
+
+KurzbeschreibungWenn ein Kommentar eingereicht wurde muss das System dem Akteur die Möglichkeit bieten, diesen Kommentar auf formelle und inhaltliche
+Aspekte zu prüfen und zu bearbeitenVorbedingung / Auslösendes EreignisEin Kommentator hat einen Kommentar zur Veröffentlichung einge- reichtAkteurModerator, EONormalablaufDer zuständige Akteur
+1. wird über den neuen Kommentar informiert.
+2. wird von dem System als Bearbeiter dem Kommentar zugeord- net
+3. prüft den Kommentar auf formelle/technische Mängel
+4. informiert den Kommentator über formelle Mängel und korri- giert diese
+5. entscheidet über den anzuwendenden Prüf/FreigabeprozessNachbedingung(en)/ErgebnisDer Akteur hat
+* hat den Kommentar einem Reviewer zugewiesen oder
+* den Kommentar freigegeben oder
+* den Kommentar verworfen
+Wenn der Kommentar von dem Akteur freigegeben wurde
+1. wird der Kommentare im System auffindbar und für jeden An- wender sichtbar
+
+
+2. versendet das System Mitteilungen an betroffene Anwender (UC_DB_009), konkrete Inhalte und Empfänger sind vor der Umsetzung mit dem AG abzustimmen.PrioritätMuss	UC_KO_007 Kommentar reviewen
+
+KurzbeschreibungWenn ein Kommentar vor Veröffentlichung ein Review durchlaufen soll, muss das System dem Akteur die Möglichkeit bieten, diesen Kommen-
+tar auf inhaltliche Aspekte zu prüfen und dann freizugeben oder abzu- lehnenVorbedingung / Auslösendes EreignisDas EO hat dem Akteur einen Kommentar zur Begutachtung zugewie- senAkteurEditorNormalablaufDer Akteur
+* wird über die Bitte zum Review informiert.
+* prüft den Kommentar und entscheidet über die weitere Bear- beitung des Kommentars
+Der Akteur
+* gibt den Kommentar frei,
+* lehnt den Kommentar abNachbedingung(en)/ErgebnisDer Kommentar ist im System gespeichert
+Wenn der Kommentar von dem Akteur freigegeben wurde
+1. wird der Kommentare im System auffindbar und für jeden An- wender sichtbar
+2. wird der Kommentar mit der Publikation archiviert
+3. wird der Kommentar an angebundene Publikationsverzeich- nisse gemeldet
+4. versendet das System Mitteilungen an betroffene Anwender (UC_DB_009), konkrete Inhalte und Empfänger sind vor der
+Umsetzung mit dem AG abzustimmen.PrioritätMussStatusErfasstAkzeptanzkriterienDas System muss dem Akteur die Möglichkeit geben, im Rahmen der Freigabe manuell für den Kommentar eine DOI zu vergeben Alternativ kann das System als Teilschritt der Freigabe dem Kommen-
+tar eine DOI automatisch zuordnen. Aufbau und Bestimmung der DOI sind vor der Umsetzung mit dem Auftraggeber abzustimmen.
+
+	EP_004 Informieren
+
+
+Abbildung 13: Anwendungsfälle Dashboard
+
+
+
+
+Anonymer. Leser
+Authentifizierter Anwender
+
+Editorial Office, AdministratorListe Mitteilungen-XXoffene Aufgaben-XXBeobachtungen-XXMeine Kommentare-XXMeine Publikationen-XXAlle …--XTabelle 5: Sichtbare Dashboard-Inhalte je Rolle
+
+Abbildung 14: Dashboard
+Abbildung 14: Dashboard dient der Veranschaulichung der beschriebenen Anwendungs- fälle, alternative Gestaltungsvorschläge sind ausdrücklich willkommen.
+
+
+	UC_DB_001 Inhalte auswählen
+
+KurzbeschreibungDas System soll den Akteur die Möglichkeit bieten, die Auswahl der an- gezeigten Inhalte seiner Dashboard-Ansicht zu verändernVorbedingung/ Auslösendes EreignisDer Akteur öffnet die Dashboard-AnsichtAkteurAuthentifizierter BenutzerNormalablaufDer Anwender blendet einen in der in UC_DB_004 bis UC_DB_008 be- schriebenen Bestandteile der Dashboard-Ansicht ein oder aus.Nachbedingung(en)/ErgebnisAkzeptanzkriterienDie Sichtbarkeit dieses Bestandteils bleibt persistent, Session und ge- räteübergreifend erhalten.
+Der Akteur kann die Einstellung rückgängig machenPrioritätSoll	UC_DB_002 Listeneinträge sortieren
+
+KurzbeschreibungDas System kann dem Anwender die Möglichkeit bieten, die Inhalte der Dashboard-Ansicht jeweils nach jeder sichtbaren Spalte auf- oder ab-
+steigend zu sortieren.Vorbedingung/ Auslösendes EreignisDer Akteur hat das Dashboard geöffnet und will die Sortierung einer der angezeigten Inhaltslisten sortierenAkteurAuthentifizierter BenutzerNormalablaufDas System sortiert die angezeigten Inhalte nach der gewählten Spalte aus,Nachbedingung(en)/ErgebnisAnsicht ist sortiertAkzeptanzkriterienDie Sortierung erfolgt korrekt nach Datentyp der sortierten Datenspalte Die Sortierung ist auf- oder absteigend möglichPrioritätKann	UC_DB_003 Anzahl konfigurieren
+
+KurzbeschreibungDas System kann dem Anwender die Möglichkeit bieten, die AnzahlVorbedingung/ Auslösendes EreignisDer Akteur hat das Dashboard geöffnet und will die Anzahl der ange- zeigten Einträge der Inhaltslisten verändernAkteurAuthentifizierter BenutzerNormalablaufDer Akteur ändert die Anzahl der anzuzeigenden ListeneinträgeNachbedingung(en)/ErgebnisDie Ergebnislisten enthalten jeweils max. die Anzahl der Listeneinträge, die der Akteur ausgewählt hat.PrioritätKann	UC_DB_004 Mitteilungen anzeigen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit geben, eine Liste der an Ihn versandten Mitteilungen einzusehenVorbedingung/ Auslösendes EreignisDer Akteur öffnet das Dashboard mit der Ansicht der eigenen Mitteilun- gen
+Der Akteur blendet in dem geöffneten Dashboard die Ansicht der eige- nen Mitteilungen einAkteurAuthentifizierter Benutzer Editorial OfficeNormalablaufDer Akteur kann die Ergebnisliste betrachten, den Mitteilungstext ein- sehen oder über den gelisteten Link das referenzierte Dokument öff- nen, ggf. mit Fokus auf den referenzierten Kommentar.Nachbedingung(en)/ErgebnisAkteur kann die Ergebnisliste der eigenen Mitteilungen betrachten und die Einträge über den Link öffnen
+
+
+Ein Akteur des Editorial Office kann die Ergebnisse aller vom System versandten Mitteilungen einsehen und nach den gezeigten Attributen filternAkzeptanzkriterienDie Ergebnisliste soll zumindest enthalten:
+* Versanddatum,
+* Betreff
+* Anklickbarer Link auf referenziertes Dokument bzw. Kommentar,
+* Nachrichtentext
+Default-Sortierung nach Datum absteigendPrioritätSoll	UC_DB_005 Aufgaben anzeigen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, eine Liste der ihm zugeordneten Aufgaben einzusehen.Vorbedingung/ Auslösendes EreignisDer Akteur öffnet das Dashboard mit der Ansicht der eigenen Aufgaben Der Akteur blendet in dem geöffneten Dashboard die Ansicht der eige-
+nen Aufgaben einAkteurEditor, Moderator, Reviewer, Kommentator, AutorNormalablaufDer Akteur betrachtet die Ergebnisliste
+Der Akteur öffnet über den Link die zur Bearbeitung der jeweiligen Auf- gabe vorgesehenen Ansicht.Nachbedingung(en)/ErgebnisAkteur kann die Ergebnisliste der eigenen Aufgaben betrachten und die Einträge über den Link öffnen
+Akteur der Rolle Editorial Office kann die Ergebnisliste aller offenen Aufgaben betrachten, nach den gelisteten Attributen filtern und die Ein-
+träge über den Link öffnen.AkzeptanzkriterienDie Ergebnisliste soll zumindest enthalten:
+* anklickbarer Link mit URL auf die Ansicht des referenzierten Doku- mentes mit ggf. Fokus auf den referenzierten Kommentar
+* Status des Dokumentes/ Kommentares
+* Solltermin
+Die vollständigen Inhalte der Aufgabenansicht sind vor der Umsetzung mit dem AG abzustimmen.PrioritätSoll	UC_DB_006 Dokumente anzeigen
+
+KurzbeschreibungDas System muss jedem angemeldeten Benutzer die Möglichkeit bieten, eine Liste der Dokumente anzuzeigen, deren Autor er ist.
+Das System muss Mitarbeitern des Editorial Office die Möglichkeit bie- ten, eine Liste aller Publikationen einzusehenVorbedingung/ Auslösendes EreignisDer Akteur öffnet das Dashboard mit der Ansicht der eigenen Publikati- onen
+Der Akteur blendet in dem geöffneten Dashboard die Ansicht der eige- nen Publikationen einAkteurAuthentifizierter Benutzer Editorial OfficeNormalablaufAkteur betrachtet die Ergebnisliste
+Der Akteur öffnet die Ansicht eines der gelisteten EinträgeNachbedingung(en)/ErgebnisAkteur kann die Ergebnisliste der eigenen Publikationen betrachten und die Einträge über den Link öffnen
+Akteur der Rolle Editorial Office kann die Ergebnisliste aller Dokumente
+betrachten, nach den gelisteten Attributen filtern und die Einträge über den Link öffnen.PrioritätMuss
+
+
+AkzeptanzkriterienDie Ergebnisliste soll enthalten
+* Titel der Publikation
+* anklickbarer Link mit URL auf die Ansicht des Dokumentes
+* (s. auch Kap. 3.3.2.7, UC_DU_007)
+* DOI-Icon mit URL/DOI des Dokumentes	UC_DB_007 Kommentare anzeigen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, eine Liste seiner Kommentare chronologisch nach Erstelldatum absteigend sortiert anzu- zeigen.Vorbedingung/ Auslösendes EreignisDer Akteur öffnet das Dashboard mit der Ansicht der eigenen Kommen- tareAkteurAuthentifizierter Benutzer Editorial OfficeNormalablaufDas System ermittelt alle Kommentare (freigeschaltete und nicht öffent- liche), denen der Akteur als Kommentator zugeordnet ist
+Das System stellt die Ergebnisse dem Akteur in der Dashboard-Ansicht
+‚Meine Kommentare‘ dar.Nachbedingung(en)/ErgebnisAkteur kann die Ergebnisliste der eigenen Kommentare betrachten und die Einträge über den Link öffnen
+Ein Akteur der Rolle Editorial Office kann eine Ergebnisliste aller einge-
+reichten Kommentare einsehen, nach den gezeigten Attributen filtern und die Einträge über den Link öffnen.PrioritätSollAkzeptanzkriterienDie Ergebnisliste soll enthalten
+* Erstelldatum
+* Die ersten X Zeichen des Kommentars, jeweils als anklickbarer Link mit URL auf die Ansicht des Dokumentes/Kommentars (s. auch Kap. 3.3.2.7, UC_DU_007)
+* Icon zum Kommentartyp
+* Icon zum Kommentarstatus
+* DOI-Icon mit URL/DOI des Kommentars (sofern vorhanden)	UC_DB_008 Beobachtungen anzeigen
+
+KurzbeschreibungDas System soll dem Akteur in der Dashboard-Ansicht zu jedem von dem Akteur eingerichteten Beobachtungsauftrag die nach Einstelldatum neusten Treffer chronologisch absteigend sortiert anzeigen.Vorbedingung/ Auslösendes EreignisDer Akteur öffnet das Dashboard mit der Ansicht der Beobachtungstref- ferAkteurAuthentifizierter BenutzerNormalablaufDas System stellt zu jedem Beobachtungsauftrag des Akteurs die Liste der Suchergebnisse zusammen und sortiert sie jeweils nach Einstellda- tum absteigend.
+Das System stellt die Ergebnisse dem Akteur in der Dashboard-Ansicht
+‚Meine Beobachtungen‘ dar.Nachbedingung(en)/ErgebnisDer Akteur kann die Ergebnisliste betrachten und die Einträge über den Link öffnenPrioritätSollAkzeptanzkriterienDie Ergebnisliste soll je nach Ergebnistyp enthalten:
+* - Einstelldatum
+* -	Titel der Publikation oder
+* die erste 50 Z des Kommentars,
+* -	Icon zum Kommentartyp
+
+
+* jeweils als anklickbarer Link mit URL auf die Ansicht des Dokumen- tes/Kommentars (s. auch Kap. 3.3.2.7, UC_DU_007)
+* - DOI-Icon mit URL/DOI des Kommentars (sofern vorhanden)	UC_DB_009 Auswertungen
+
+KurzbeschreibungDas System soll dem Akteur Informationen zur Systemnutzung liefernVorbedingung/ Auslösendes EreignisDer Akteur ruft die Auswertungsergebnisse in der Nutzeroberfläche ab Der Akteur ruft die Auswertungsergebnisse über eine Schnittstelle (s.Kap. 3.5.7, IF_006) abAkteurJeder, Editorial OfficeNormalablaufDer Akteur wählt die Auswertungsfunktion aus und ruft die Ergebnisse ab.Nachbedingung(en)/ErgebnisDas System stellt dem Akteur die Auswertungsergebnisse in Textform, grafisch und als Daten über die API-Schnittstelle (IF_007, Kap. 3.5.7) bereit.PrioritätSollAkzeptanzkriterienDer AG erwartet folgende Auswertungsmöglichkeiten
+* Anzahl Benutzer im Zeitraum X
+* Anzahl der Gesamtaufrufe im Zeitraum X
+* Anzahl der Aufrufe im Zeitraum X je Publikation
+* Anzahl Kommentare im Zeitraum X
+* Liste der neuen Publikationen in den letzten X Tagen
+* Liste der neuen Kommentare in den letzten X Tagen
+* Liste der neuesten Kommentare im Zeitraum X je Publikation
+* Top X der aufgerufenen Publikationen im Zeitraum X
+    * Top X der kommentierten Publikationen im Zeitraum X Diese Aufzählung hat keinen Anspruch auf Vollständigkeit, der kon-
+krete Funktionsumfang des Auswertungsmoduls ist vor der Umsetzung mit dem AG abzustimmen. UC_DB_010 Mitteilung versenden
+
+KurzbeschreibungWenn festgelegte Ereignisse/Statusübergänge zu einer Publikation ein- treten, soll das System an betroffene Anwender Mitteilungen versen-
+den.Vorbedingung/ Auslösendes Ereignis* Publikation/Version eingestellt
+* Zuordnung Moderator/Editor etc.
+* Statusänderung Publikation
+* Kommentar eingestellt
+* Statusänderung Kommentar
+Diese Aufzählung der Versand-Ereignisse erhebt keinen Anspruch auf Vollständigkeit. Zu unterstützendende Auslöseereignisse, Inhalte der
+zu versendenden Mitteilung und Empfängerkreis sind vor der Umset- zung mit dem AG abzustimmen.AkteurSystemNormalablaufDas System
+1. erkennt ein eingetretenes Ereignis
+2. stellt den zu informierenden Anwenderkreis fest
+3. erstellt den Mitteilungstext
+4. versendet eine Email mit dem Mitteilungstext an den Empfän- gerkreis
+5. speichert die Mitteilung an den Anwender mit Text, Referenz auf das auslösende Objekt und Versanddatum und zeigt diese dem Empfänger im Dashboard unter ‚Meine Mitteilungen‘ an (S. Kap. 3.3.4.4).
+
+
+Nachbedingung(en)/ErgebnisDer Empfänger erhält die spezifizierte Email-Benachrichtigung Die Mitteilung ist in der Dashboard-Ansicht des Empfängers nach UC_DB_004 gelistet.PrioritätSoll
+EreignisAFEmpfängerInhaltDokument eingestelltUC_DI_001EO, SE, AutorDokument zugeordnetUC_DI_003Moderator, EO, SEDokument freigeschaltetUC_DI_005EO, Editor, Autor, Mo- derator, BeobachterDokument in Überarbei- tungUC_DI_006EO, Autor, Moderator, Kommentator, Be- obachterDokument gelöschtFolgeversion	freige- schaltetUC_DI_005EO, Editor, Autor, Mo- derator, BeobachterKommentar eingestelltUC_KO_001EO, ModeratorCoKommentator hinzu- gefügt / entferntUC_KO_005CoKommentatorKommentar in ReviewUC_KO_003EO, Moderator, Edi- tor, KommentatorKommentar freigeschal- tetUC_KO_003EO, Moderator, Edi- tor, Kommentator, Au- tor, BeobachterKommentar abgelehntUC_KO_006
+UC_KO_007EO, Moderator, Edi- tor, Kommentator
+
+Tabelle 6: Ereignisse, Mitteilungen und Empfänger
+	EP_005 Benutzer verwalten
+
+Abbildung 15: Anwendungsfälle Benutzerverwaltung
+	UC_BV_001 Benutzer registrieren
+
+KurzbeschreibungDas System muss jedem nicht registrierten Benutzer die Möglichkeit bieten, sich als Anwender zu registrierenVorbedingung/Auslösendes Er- eignisEin nicht authentifizierter Benutzer ohne vorherige Registrierung öffnet die Maske zur Registrierung
+Ein Akteur der Rolle Editorial Office öffnet die Maske zur Registrierung eines neuen AnwendersAkteurnicht authentifizierter Benutzer Editorial OfficeNormalablaufDer Akteur
+* erfasst die Pflichtattribute der Stammdaten eines Benutzers:
+o Vorname
+o Name
+
+
+o Mailadresse
+o Passwort
+* speichert die Benutzerdaten. Das System
+* prüft die Email auf Gültigkeit
+* prüft das Passwort auf ausreichende Komplexität
+* versendet zur Prüfung eine Bestätigungsemail an die angegebene Email-Adresse mit Link zur Bestätigung/Profilseite
+* Der Akteur öffnet seine Profilseite über den Link und
+* akzeptiert die Einverständniserklärungen
+o DSGVO
+o Kommunikation
+o Lizenz
+* ergänzt optional Angaben zu
+o Affiliation
+o Fachgebiete
+o Qualifikationsstufe/Grad
+o ORCID
+o Link (Plausibilitätsprüfung auf URL)
+o Beschreibung (mehrzeilig)
+o ProfilbildAlternativer AblaufDas Editorial Office initiiert die Anmeldung eines Anwenders, dieser
+führt selbständig die weitere Anmeldung nach Erhalt der Bestätigungs- email aus.Nachbedingung(en)/ErgebnisDie Informationen des Akteurs sind gespeichert. Der Benutzer kann sich anmelden.
+Eine Mitteilung über die Neuregistrierung wurde an die betroffenen An- wender versandtPrioritätMussAkzeptanzkriterienRegistrierung ist nur nach valider Befüllung der Pflichtfelder möglich:
+* Email-Adresse ist auf syntaktische Gültigkeit geprüft,
+* Das Passwort entspricht den Vorgaben zur Passwortkomplexität
+* Eine automatische Registrierung durch z.B. Programme/Skripte/Bots ist nicht möglich
+* Einverständniserklärungen zu DSGVO, Lizenz und Mitteilungsver- sand sind akzeptiert
+
+	UC_BV 002 Benutzer über ORCID registrieren
+
+Vorbedingung/Auslösendes Er- eignisDas System muss dem Akteur die Möglichkeit bieten, die Benutzerre- gistrierung über ORCID durchzuführen und sich dafür ggf. zuerst bei ORCID zu registrierenAkteurNicht authentifizierter und nicht registrierter AnwenderNormalablaufDer Akteur authentifiziert sich über ORCID Das System
+* ruft bei ORCID die zugänglichen Informationen zu dem authentifi- zierten ORCID-Anwender ab (Kap. 3.5.2)
+* übernimmt mindestens folgende Angaben
+o /ID-> ORCID
+o /personal-details -> Name
+o /email -> Email
+o /other-names -> Alias
+o /record -> Beschreibung
+* vergibt ein initiales Passwort
+* öffnet die vorausgefüllte Profilseite.
+* akzeptiert die Einverständniserklärungen zu
+
+
+o DSGVO
+o Mitteilungen
+o Lizenz
+* ergänzt optional Angaben zu seinem Benutzerprofil
+o Affiliation
+o Fachgebiete
+o Qualifikationsstufe/Grad
+o ORCID
+o Link (Plausibilitätsprüfung auf URL)
+o Beschreibung (mehrzeilig)
+o ProfilbildNachbedingung(en)/ErgebnisDer Anwender ist als Benutzer am System registriert und kann sich
+über ORCID (ohne zusätzliche Passwortabfrage) oder das vergebene Passwort anmeldenPrioritätMussAkzeptanzkriterienDer Benutzer ist am System registriert und kann sich über ORCID oder Passwort anmelden.
+ORCID, Name, Email, Aliasse wurden aus ORCID in das Benutzerprofil übernommen.
+Abbildung 16: Registrierung über ORCID (Gestaltungsvorschlag)
+
+
+	UC_BV_003 Benutzerliste anzeigen
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, eine Gesamt- schau aller registrierten Anwender zu betrachten, einzelne Anwender darin zu finden und zu bearbeiten. Der Akteur soll die Anzeige auch auf
+die Anzeige von Doppelgängern einschränken können.Vorbedingung/Auslösendes Er- eignisDas Konto eines Anwenders soll (de-)aktiviert werden, ein Passwort soll zurückgesetzt werden
+Profildaten eines Anwenders sollen bearbeitet werdenAkteurEditorial Office AdministratorNormalablaufDer Akteur öffnet eine nach Name + Vorname sortierte Liste aller re- gistrierten Anwender.
+Angezeigt werden sollen mindestens Name, Vorname, Email und ggf. ORCID-Icon (analog zu Kap. 3.3.2.6 UC_DU_006)Nachbedingung(en)/ErgebnisDer Akteur kann aus der Benutzerliste in die Bearbeitung der Benutzer- Profilseite (Kap. 3.3.5.4, UC_BV_004) wechseln.PrioritätMussAkzeptanzkriterienDer Akteur kann in der Liste der Anwender nach jedem der angezeig- ten Felder suchen, aufsteigend und absteigend sortieren.
+Der Akteur kann die Anzeige der Benutzerliste auf die Anzeige von Duplikaten, d.h. die Einträge mit identischem Namen + Vornamen ein-
+schränken.
+
+	UC_BV_004 Benutzer bearbeiten
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, die bei der Be- nutzerregistrierung (Kap. 3.3.5.1 UC_BV_001) gemachten Profilanga- ben eines Benutzerkontos nachträglich zu bearbeiten.Vorbedingung/Auslösendes Er- eignisÄnderungen an den Profildaten eines registrierten Anwenders sind er- forderlich,Akteurauthentifizierte Anwender (eigene Benutzerdaten)
+Administrator, Editorial Office (Benutzerdaten aller registrierten Anwen- der)NormalablaufDer Akteur
+öffnet (s)seine Benutzerprofilseite
+ändert/ergänzt Angaben zu dem Profil übernimmt die Änderungen in das SystemNachbedingung(en)/Ergebnis* Die geänderten Benutzerdaten sind im System gespeichert.
+* Änderungen an Rollen greifen bei der nächsten Anmeldung des Benutzers.PrioritätMussAkzeptanzkriterienDie geänderten Profilangaben werden vor dem Speichern auf Einhal- tung aller Gültigkeitsregeln überprüft und nur bei Validität akzeptiert. Bei Nichteinhaltung erhält der Anwender eine aussagekräftige Mel- dung, welches der Felder nicht den Anforderungen entspricht.
+Das System zeigt in allen Sichten mit Informationen zu dem Benutzer (u.a. UC_DU_004, UC_DU_006, UC_BV_003) die geänderten Anga-
+ben des Benutzerprofils	UC_BV_004 Namen ändern
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit geben, bei Namensände- rungen eines registrierten Anwenders neben dem aktuellen Namen auch frühere Namen zu hinterlegen, damit alle Beiträge des Anwenders sowohl unter dem alten Namen, als auch unter dem neuen Namen ge-
+funden werden können.Vorbedingung/ Auslösendes Er- eignisDer Anwender ändert seinen Vor- oder Nachnamen (durch Heirat, Scheidung, etc.)AkteurJeder authentifizierte AnwenderNormalablaufDer Akteur öffnet (s)eine Profilseite
+Er ändert den angezeigten Namen und ergänzt der vorherigen Namen unter Alias oder
+Er ergänzt einen früheren Namen unter AliasNachbedingung(en)/ErgebnisDie Änderungen zu Benutzername und/oder Aliassind gespeichert.PrioritätMussAkzeptanzkriterienBeiträge des Anwenders, die unter dem früheren Namen veröffentlicht wurden werden auch bei der Suche nach dem aktuellen Namen als Su- chergebnis angezeigt
+Beiträge des Anwenders, die unter dem aktuellen Namen veröffentlicht wurden werden auch bei der Suche nach einem früheren Namen als Suchergebnis angezeigt
+Als Name wird bei allen Kommentaren des Anwenders der Name zum Zeitpunkt der Kommentierung angezeigt
+
+	UC_BV_006 Benutzer sperren
+
+KurzbeschreibungEin berechtigter Benutzer muss in der Lage sein, einen Benutzer im System zu sperren.Vorbedingung/Auslösendes Er- eignisDer Benutzer darf nicht mehr mit dem System arbeiten.AkteurAdministrator, Editorial OfficeNormalablauf* Der Akteur wählt den Benutzer aus.
+* Der Akteur sperrt den Benutzer.Nachbedingung(en)/Ergebnis* Der Benutzer ist gesperrt.PrioritätMussAlternativablaufDer Akteur muss die Möglichkeit haben die Sperre eines Benutzers wieder aufzuheben.AkzeptanzkriterienEin gesperrter Benutzer kann sich nicht am System anmelden Beiträge eines gesperrten Benutzers sind weiterhin verfügbar.
+Ein gesperrter Benutzer erhält weiterhin Mitteilungen zu seinen Beiträ- gen.
+
+	UC_BV_007 Benutzer löschen
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, nicht benötigte
+Angaben zu einem Benutzerkonto zu löschen und das Konto zu deakti- vieren.Vorbedingung/Auslösendes Er- eignisDer Benutzer beantragt die Löschung seines Kontos.
+Der Akteur ruft die Löschfunktion für das Benutzerkonto aufAkteurAdministratorNormalablaufDas System
+* deaktiviert das Benutzerkonto
+* Nicht benötigte Metadaten zu dem Benutzerkonto werden entfernt, Benötigte Metadaten bleiben erhalten, z.B. Name, Vorname, Affilia- tion, Qualifikation. Die Auswahl der benötigten Benutzerattribute ist
+vor der Umsetzung mit dem AG abzustimmen.Nachbedingung(en)/Ergebnis* Kommentare des Benutzerkontos bleiben mit Nennung des Verfas- sers erhalten
+* Dokumente, bei denen der zu löschende Benutzer als Autor ge- nannt ist bleiben erhalten.
+* Bei Aufruf der Anwenderinfoseite erscheint ein Hinweis, dass keine
+Daten zu dem Anwender vorhanden sind / wird ein Link zum OR- CID-Profil des Anwenders angezeigt, soweit vorhanden.PrioritätMuss	UC_BV_008 Passwort zurücksetzen/ändern
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, das Passwort ei- nes registrierten Benutzers zurückzusetzenVorbedingung/Auslösendes Er- eignisEin bereits authentifizierter Akteur will sein Passwort ändern
+Ein nicht authentifizierter Akteur will sein Passwort zurücksetzen, weil er es vergessen hatAkteurAuthentifizierter Anwender Nicht authentifizierter Anwender AdministratorNormalablaufDer Akteur aktiviert die Zurücksetzen-Funktion
+Der Akteur gibt die Anmelde-Email des zurückzusetzenden Benutzer- kontos an.
+
+
+Das System versendet eine Email an die Benutzer-Email-Adresse mit einem Link zum Zurücksetzen/Ändern des Kontos
+Der Akteur öffnet diesen Link.AlternativablaufEin bereits authentifizierter Anwender kann sein Passwort ändern (Kap.3.3.5.4, UC_BV_004)
+Der Akteur gibt zur Änderung des Passworts folgende Daten ein:
+o das aktuelle Passwort
+o das neue Passwort
+    o eine Bestätigung des neuen Passworts Das System bricht die Passwortänderung ab, wenn
+* das alte Passwort nicht korrekt eingegeben wurde
+* das neue Passwort nicht den Sicherheitsanforderungen entspricht.
+* das neue Passwort nicht der Wiederholung entsprichtNachbedingung(en)/Ergebnis* Der Akteur hat ein neues Passwort zu seiner Benutzerkennung ge- speichert und kann sich damit anmelden.
+* Eine Anmeldung mit dem alten Passwort ist nicht mehr möglich.PrioritätMussQuerbezug zu nicht-funktiona- len AnforderungenDie Regelungen zum Passwortgebrauch sind berücksichtigtAkzeptanzkriterienDer nicht authentifizierte Anwender kann sein Passwort zurücksetzen auch ohne Kenntnis des vorherigen Passwortes sofern er Zugriff auf das Emailpostfach der Anmelde-Email-Adresse hat.
+Der Link zum Zurücksetzen des Passwortes ist nur zeitlich begrenzt gültig
+
+	UC_BV_009 Benutzer anmelden
+
+KurzbeschreibungEin Benutzer meldet sich für die Arbeit im System mit seiner Mailadresse und seinem Passwort an. Nach drei erfolglosen Anmelde- versuchen wird der Benutzer automatisch gesperrt.Vorbedingung/Auslösendes Er- eignisDer Benutzer möchte mit dem System arbeiten.AkteurNicht authentifizierter Benutzer mit gültigem Benutzerkonto und be- kannten ZugangsdatenNormalablauf* Der Akteur meldet sich mit seiner Email-Adresse und seinem Pass- wort an.
+* Das System prüft die vom Akteur eingegebenen Anmeldedaten (Kombination aus Mailadresse und Passwort).
+* Das System führt die Anmeldung durch, wenn die Anmeldedaten korrekt sind.
+* Der Anwender wird auf die Ansicht des zuletzt betrachteten Doku- mentes geleitet.
+* Meldet sich der Akteur zum ersten Mal an wird er auf die Landing- Page geleitet
+* Hatte der Akteur zuletzt keine Dokumentansicht geöffnet (sondern z.B. Profilseite, Dashboard, Suche) wird er auf die LandingPage
+geleitet.Alternativablauf* Das System bricht die Anmeldung ab, wenn
+* die Anmeldedaten nicht korrekt sind.
+* der Akteur gesperrt ist.
+* beim dritten fehlerhaften Versuch. Das System sperrt den Ak- teur automatisch.
+* das initiale Passwort abgelaufen ist.Nachbedingung(en)/Ergebnis* Der Akteur ist angemeldet.
+
+
+* Das System leitet den Akteur auf die spezifizierte Seite (Dokument- ansicht oder LandingPage)PrioritätMuss
+
+ UC_BV_010 Benutzer über ORCID anmelden
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit geben, sich über die ORCID-Schnittstelle zu authentifizieren (s.Kap. 3.5.2)Vorbedingung/Auslösendes Er- eignisDer Akteur öffnet die Anwendung und aktiviert die Funktion zur Authen- tifizierung über ORCIDAkteurNicht authentifizierter Benutzer mit gültigem Benutzerkonto und hinter- legter ORCID-IDNormalablaufDas System öffnet die ORCID-Login-Seite
+Nach erfolgreicher Authentifizierung durch ORCID wird die wird der Anwender wieder auf die Anwendung zurückgeleitetNachbedingung(en)/ErgebnisDer Akteur ist am System als Anwender mit der authentifizierten OR- CID ID angemeldetPrioritätSoll
+Abbildung 17: Anmeldung über ORCID (Gestaltungsvorschlag)
+ UC_BV_011 Benutzerrollen zuweisen und bearbeiten
+
+KurzbeschreibungDas System sollte dem Akteur die Möglichkeit geben, die Rollenzuord- nung eines Benutzerkontos zu ändernVorbedingung/Auslösendes Er- eignisDie funktionale Rolle eines Anwenders im Kontext des Systems ändert sichAkteurAdministratorNormalablaufDer Akteur ändert die Rollenzuordnung des Benutzerkontos des An- wendersNachbedingung(en)/ErgebnisDer Anwender hat spätestens nach der nächsten Anmeldung am Sys- tem die Sichten und funktionalen Rechte entsprechend der neu zuge-
+ordneten Rolle(n)PrioritätMuss
+
+	EP_006 Stammdaten verwalten
+Bei der Stammdatenverwaltung handelt es sich um inhaltliche oder konfigurative Anpassun- gen der Anwendung. Die beschriebenen Anwendungsfälle sind Konkretisierungen der in Kap. 4.6.2 beschriebenen Anforderungen zur Modifizierbarkeit.
+
+Abbildung 18: Anwendungsfälle Stammdaten verwalten
+	UC_AD_001 Auflistungen anpassen
+
+KurzbeschreibungDas System muss dem Anwender die Möglichkeit bieten, die zur Aus- wahl stehenden AusprägungenVorbedingung/Auslösendes Er- eignisDer AG nimmt Änderungen an einem im System abgebildeten Ge- schäftsprozess oder Geschäftsobjekt vor, die Auswirkungen auf die
+möglichen Ausprägungen eines Geschäftsobjektes habenAkteurAdministratorNormalablaufDer Administrator fügt einen Eintrag in einer der Auflistungen hinzu, än- dert dessen Bezeichnung oder entfernt diesen. Zu unterstützende Auf- listungen sind
+* Kommentartyp
+* Kommentarstatus
+* Dokumentstatus
+* …
+
+
+Diese Liste hat keinen Anspruch auf Vollständigkeit, der Umfang der zu unterstützenden Auflistungen ist vor der Umsetzung mit dem AG abzu- stimmen.Nachbedingung(en)/ErgebnisPrioritätMussQuerbezug zu nicht-funktiona- len AnforderungenKap. 4.6.2, Modifizierbarkeit	UC_AD_002 Funktionale Rechte vergeben
+
+KurzbeschreibungDas System muss dem Akteur die Möglichkeit bieten, dieVorbedingung/Auslösendes Er- eignisAkteurAdministratorNormalablaufDer Akteur ändert die Berechtigung einer Rolle auf eine Funktion. Der AnwenderNachbedingung(en)/ErgebnisDie Änderung der Funktionsrechte wirkt sich auf die funktionalen Be- rechtigungen der Anwender in ihren jeweiligen Rollen aus.PrioritätSollQuerbezug zu nicht-funktiona- len AnforderungenKap. 4.6.2, Modifizierbarkeit	UC_AD_003 Prozessmodell anpassen
+
+KurzbeschreibungDas System soll dem Anwender die Möglichkeit bieten, dieVorbedingung/Auslösendes Er- eignisDer AG ändert Zuständigkeiten, Inhalte oder Ablauf eines im System abgebildeten Geschäftsprozesses.AkteurAdministratorNormalablaufDer Akteur ändert das Prozessmodell für denNachbedingung(en)/ErgebnisDer veränderte Geschäftsprozess wird korrekt im Prozessmodell des Systems abgebildet, insbesondere mögliche Prozessschritte, Stati und Statusübergänge der beschriebenen Geschäftsobjekte (Dokumente, Kommentare) sowie jeweils mögliche Zuständigkeiten und Berechtigun-
+gen.PrioritätSollQuerbezug zu nicht-funktiona- len AnforderungenKap. 4.6.2, Modifizierbarkeit	UC_AD_004 Mitteilungen aus dem System anpassen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, Inhalte, Empfänger
+und auslösende Ereignisse der in Kap. 3.3.4.10 UC_DB_010 Mitteilun- gen anzupassenVorbedingung/Auslösendes Er- eignisDer AG ändert Zuständigkeiten, Inhalte oder Ablauf eines im System abgebildeten Geschäftsprozesses. Diese Anpassung erfordert Ände- rungen der Informationsweitergabe des Systems an die Anwender.AkteurAdministratorNormalablaufDer Akteur erstellt oder bearbeitet ein Mitteilungstemplate und ändert
+* das Auslöseereignis
+* den oder die Empfänger
+* die zu versendenden Inhalte (Texttemplates und -bausteine)Nachbedingung(en)/ErgebnisInhalt, Auslöseereignis und/oder Empfänger der Mitteilung sind ange- passt und wirksam bei dem nächsten Eintreten des auslösenden Ereig- nisses.PrioritätSollQuerbezug zu nicht-funktiona- len AnforderungenKap. 4.6.2, Modifizierbarkeit
+
+	UC_AD_005 Lizenztexte anpassen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, die bei der Benut- zerregistrierung zu akzeptierenden Einverständniserklärungen zu än- dernVorbedingung/Auslösendes Er- eignisDie rechtlichen Grundlagen der bisherigen zustimmungspflichtigen Ein- verständniserklärungen ändern sichAkteurAdministratorNormalablaufDer Administrator ändert den Text einer der zustimmungspflichtigen Einverständniserklärungen (s. Kap. 3.3.5.1 UC_BV_001)
+* DSGVO
+* Lizenz
+* Mitteilungsversand
+Der Anwender wird bei der nächsten Anmeldung dazu aufgefordert, der geänderten Einverständniserklärung zuzustimmen.Nachbedingung(en)/ErgebnisDer Anwender hat der neuen Einverständniserklärung zugestimmt und kann als authentifizierter Anwender weiterarbeiten.
+Ohne Zustimmung bleibt das Konto deaktiviert.PrioritätMussQuerbezug zu nicht-funktiona- len AnforderungenKap. 4.6.2, ModifizierbarkeitAkzeptanzkriterienDas System verhindert eine weitere Nutzung als authentifizierter An- wender ohne Zustimmung zu der aktuellen Fassung der Einverständ- niserklärung.
+Für jeden Anwender muss nachvollziehbar sein welcher Fassung der jeweiligen Einverständniserklärung er zuletzt zugestimmt hat.	UC_AD_006 LandingPage
+
+KurzbeschreibungDas System soll dem Betreiber die Möglichkeit bieten, eine interne HTML-Seite als Startseite/Landingpage der Anwendung zu gestalten o- der eine externe HTML-Seite als LandingPage zu verwenden.
+Als LandingPage soll eine schlichte Startseite gezeigt werden, die eigen- ständig redaktionell durch den AG gepflegt werden kann.
+Inhaltlich sollen gezeigt werden
+==> eine Vorstellung der Zeitschrift
+==> dynamische Inhalte wie z.B. neue Publikationen,
+Sektionen mit Anzahl der Publikationen
+==> Funktionen zur Nutzung ohne Authentifizierung Anmeldung
+Suchen
+Artikel einreichen
+Als Gestaltungsvorschlag verweist der AG auf elifesciences.org6/ er- gänzend auf das CD-Handbuch und die Website des AGVorbedingung/ Auslösendes Er- eignisAufruf der Basis-URL der Plattform in einem BrowserAkteurJederNormalablaufDem Akteur wird die LandingPage angezeigt, die ihm Informationen zu und Zugriff auf die Funktionalitäten der Plattform bietet.
+6 https://elifesciences.org/
+
+
+
+Nachbedingung(en)/ErgebnisBei Aufruf der Basis-URL der Plattform im Browser wird die Landing- page mit den angepassten Inhalten angezeigtPrioritätMussQuerbezug zu nicht-funktiona- len AnforderungenKap. 4.6.2, ModifizierbarkeitAkzeptanzkriterienDer Administrator kann die LandingPage inhaltlich selbständig anpas- sen.
+Das System soll zur Gestaltung der LandingPage dynamische Inhalte zur Verfügung stellen:
+- aktueller Benutzername und Link auf dessen Profilseite
+- Link auf vom Anwender zuletzt betrachtetes Dokument (Dokument od. Kommentar)
+- Sektionen mit Anzahl Dokumente, Dokumentliste
+- Klassen mit Anzahl Dokumente, Dokumentliste
+- Kommentare im System (s. auch Kap. 3.5.6 und 3.5.7 ).	UC_AD_007 Zitationsstile anpassen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, die angebotenen Exportformate für Zitationsinformationen zu einem Dokument an ver-
+schiedene Zitationsstile anzupassen.Vorbedingung/ Auslösendes Er- eignisZusätzliche Zitationsstile sollen unterstützt oder vorhandene angepasst werden können.AkteurAdministratorNormalablaufDer Akteur ändert die ExportkonfigurationNachbedingung(en)/ErgebnisDer Export der Zitationsinformationen zu einem Dokument entspricht der aktuellen Konfiguration zu dem gewählten Format und StilPrioritätMussQuerbezug zu nicht-funktiona- len AnforderungenKap. 4.6.2,AkzeptanzkriterienDem Leser eines Dokumentes werden die Zitationsinformationen in al- len unterstützten Formaten für die jeweils festgelegten Informationsstile angeboten.
+Bei Auswahl eines Zitationsstiles entspricht der Export inhaltlich dem beschriebenen Stil, d.h. systeminterne Dokumentattribute werden ent- sprechend der Stilbeschreibung in das gewählte Exportformat über- nommen.
+Die Zitationsstile können für alle unterstützten Exportformate angepasst werden.	UC_AD_008 Pflichtfelder für Benutzerprofil anpassen
+
+KurzbeschreibungDas System soll dem Akteur die Möglichkeit bieten, Attribute des Be- nutzerprofils als Pflichtfeld bei der Registrierung festzulegenVorbedingung/ Auslösendes Er- eignisZur Verbesserung der Datenqualität sollen Anwender zur Ergänzung von bisher optionalen Angaben zu ihrem Profil bewogen werdenAkteurAdministratorNormalablaufDer Akteur kennzeichnet nachträglich ein Attribut des Benutzerprofils als Pflichtfeld, das im Datenmodell (Kap.3.2.1,‘Anwender‘) bisher nicht als Pflichtfeld vorgesehen ist.Nachbedingung(en)/ErgebnisBei nachfolgenden Neuregistrierungen (UC_BV_001) oder Bearbeitun- gen eines bestehenden Benutzerprofils (UC_BV_004) ist das gekenn- zeichnete Attribut ein Pflichtfeld und muss zur erfolgreichen Registrie-
+rung des Anwenders angegeben werden.PrioritätSollQuerbezug zu nicht-funktiona- len AnforderungenKap. 4.6.2, Modifizierbarkeit
+
+
+AkzeptanzkriterienBereits registrierte Anwender werden bei der Anmeldung auf das Nach- tragen ggf. fehlender Angaben in ihrem Profil hingewiesen, aber nicht
+an der Nutzung des Systems ohne Eintrag des/der neuen Pflichtfelder- gehindert.
+3.4 Benutzeroberflächen
+Die Publikations- und Diskussionsplattform soll als responsive Webanwendung umgesetzt werden, d.h. sie soll für die Benutzeroberflächen je nach Displayformat angepasste Layouts verwenden.
+Unterstützt werden müssen mindestens die Formate Desktop, Tablet(10‘) und Smart- phone(6‘).
+Die Ausgestaltung der Benutzeroberflächen wird im Rahmen der Umsetzung mit dem AG abgestimmt. Abbildungen zur Benutzeroberfläche innerhalb des Lastenheftes sind Gestal- tungsvorschläge und haben sofern nicht explizit angegeben keinen bindenden Charakter.
+Die in Kap. 4.4 formulierten Anforderungen zur Benutzbarkeit sind zu erfüllen, insbesondere sind die Gestaltungsrichtlinien zum Corporate Design der Leopoldina (Kap. 12) zu berück- sichtigen.
+	Sprachunterstützung
+Der Benutzerkreis wird Englisch als etablierte Wissenschaftssprache verwenden, deshalb ist Englisch als Sprache für UI und alle für den Benutzer relevanten Texte zwingend erfor- derlich. Analog sind alle systeminternen Texte in Englisch zu verfassen.
+
+ANF_LNG_1UIMussDas System muss dem Anwender die Möglichkeit bieten, alle Texte, Beschriftungen, Meldungstexte und Endbenutzerdoku- mente der Anwendung in englischer Sprache einzusehen.ANF_ LNG_2Logging/ CodeMussSysteminterne Texte (Quellcodekommentare, Log-Einträge) sind in englischer Sprache zu verfassen.ANF_ LNG_3Dokumenta- tionSollInstallations- und Betriebshandbücher sind in deutscher Spra- che zu verfassen.ANF_ LNG_4Mehrspra- chigkeitoptio- nalMehrsprachigkeit, d.h. die Möglichkeit, Texte (Oberflächenbe- schriftungen, Mitteilungstexte, Stammdaten, Templates) in mehreren Sprachen zu hinterlegen und eine der Übersetzun- gen zur Verwendung auszuwählen ist willkommen aber nicht zwingend erforderlich.
+
+3.5 Schnittstellen
+	IF_001 DOI – Digital Object Identifier
+Publikationen und Dokumenten, die in das System aufgenommen werden ist bereits im Rah- men des redaktionellen Publikationsprozesses ein DOI zugeordnet worden.
+DOI für nach Review freigegebene Kommentare sollen in der ersten Ausbaustufe manuell durch das Editorial Office vergeben werden.
+Das System soll insofern erweiterbar sein, dass es einen DOI zu einem nach Review frei- gegebenen Kommentar nach Vorgabe des AG selbst erzeugen kann.
+Das System soll insofern erweiterbar sein, dass es die von einem Registrierungsdienst ver- gebenen DOI übernehmen kann und mit dem Kommentar speichern kann.
+Archivsysteme wie Reposis können einen DOI bei der Archivierung eines Dokumentes au- tomatisch vergeben. Das System soll grundsätzlich insofern erweiterbar sein, dass es die bei der Archivierung vergebene DOI in die Metadaten zu dem Dokument/Kommentar über- nimmt.
+Herkunft, Aufbau und Inhalt der DOI zu einem Kommentar sind vor der Umsetzung mit dem AG abzustimmen.
+	IF_002 ORCID – Open Researcher and Contributor Identifier
+ORCID als gemeinnützige Organisation stellt eine persönliche Kennung (Open Resear- cher and Contributor Identifier) für alle Lehre und Forschung beschäftigten sowie eine Plattform, um persönliche Informationen mit dieser Kennung zu hinterlegen.
+
+Das System soll auch ohne Verbindung zu orcid.org nutzbar sein, d.h. nur mit funktionalen Einschränkungen bei Anwendungsfällen mit Zugriff auf ORCID)
+
+Die ORCID API Credentials werden vom AG bereitgestellt.
+
+	Authentifizierung über ORCID7
+Anwender mit einer ORCID-ID sollen sich alternativ auch über die ORCID Credentials für die Nutzung des beschriebenen Systems authentifizieren können.
+	Übernahme von ORCID Benutzerinformationen 89
+Bei der Erstregistrierung von Benutzern (Kap. UC_BV_002) sollen nach Authentifizie- rung an ORCID der ORCID-Record über die ORCID-API abgerufen und Inhalte in kor- respondierende Felder des Benutzerprofils übernommen werden.
+Korrespondierende Felder sind z.B.
+o ORCID ID => ORCID ID
+o /name/family-name => Name
+
+7 https://members.orcid.org/api/integrate/orcid-sign-in
+8 https://members.orcid.org/api/tutorial/read-orcid-records
+9 http://members.orcid.org/api/basic-tutorial-reading-orcid-record-xml-30
+
+
+o /name/given-names => Vorname
+o Other-names/other_name/content => Alias
+o email/email => Email
+Diese Zuordnung ist nicht vollständig und mit dem AG vor der Implementierung abzustim- men.
+	Abruf von Autoreninformationen zur Anzeige bzw. Aufruf der URL
+Ist zu einem Anwender oder Autor eine ORCID-ID bekannt soll die Darstellung dieser OR- CID-ID mit der URL zum Aufruf des ORCID-Record hinterlegt werden. Die URL setzt sich zusammen aus https://orcid.org/<ORCID-ID>. Bei Klick auf diese URL soll die Profilseite in einem neuen Browsertab od. Browserfenster geöffnet werden.
+Die Darstellung der ORCID soll innerhalb des Systems nach den Darstellungsrichtlinien der ORCID10 erfolgen.
+	IF_003 Redaktionssysteme
+Das System soll Publikationen/Dokumente aus mindestens einem Redaktionssystem über- nehmen können.
+Die zukünftige Anbindung oder Integration anderer/weiterer Redaktionssysteme wie Publi- sso der ZBMED ist möglich. Das System sollte daher die zukünftige Erweiterung zur An- knüpfung weiterer Importformate- oder -schnittstellen zulassen, z.B. das häufig eingesetzte Exportformat JATS-XML11,
+Die responsive Darstellung der Dokumentinhalte innerhalb der Diskussionsplattform setzt voraus, dass das verwendete Format ggf. nach Konvertierung eine html-basierte Darstel- lung und die dynamische Anpassung an unterschiedliche Displayformate zulässt. PDF als Importformat erfüllt diese Anforderung nicht
+Ein Export von Inhalten aus der Diskussionsplattform in angebundene Redaktionssysteme ist nicht vorgesehen.
+	OJS Open Journal Systems
+Aktuell wird vom AG das Open Journal System OJS12 als Redaktionssystem genutzt und präferiert. Dieses Redaktionssystem ist aber nicht zwingend gesetzt und kann durch ein gleichwertiges vom AN unterstütztes Redaktionssystem ersetzt werden.
+Open Journal Systems ist eine etablierte OpenSource-Softwarelösung des Public Know- ledge Project für die Publikation wissenschaftlicher Journale und wird weltweit von über
+10.000 Journalen genutzt.
+OJS bietet eine REST-Schnittstelle13 zum Import und Export redaktioneller Daten14.
+Die Übernahme eines Dokumentes in die Diskussionsplattform soll unter Verwendung die- ser Exportschnittstelle des OJS erfolgen.
+
+10 https://orcid.org/trademark-and-id-display-guidelines
+11 https://jats.nlm.nih.gov/1.2/
+12 https://pkp.sfu.ca/ojs/
+13 https://docs.pkp.sfu.ca/dev/api/ojs/3.2
+14 https://docs.pkp.sfu.ca/admin-guide/en/data-import-and-export
+
+
+	IF_004 Archivsysteme
+Die initiale Archivierung der eigentlichen Publikation kann im Rahmen des redaktionelle Publikationsprozesses (außerhalb des hier beschriebenen Systems) erfolgen.
+Die Archivierung des Dokumentes mit freigegebenen Kommentaren erfordert die Erstel- lung eines revisionssicheren Exportformates unter Einbeziehung der zugeordneten Kom- mentare mit allen unterstützten Inhalten (s. UC_KO_001 Kommentar erstellen). Das Sys- tem muss daher Dokumente mit enthaltenen Metadaten und Kommentaren in das PDF/A- Format exportieren können.
+Die Archivierung, d.h. Erstellung der Archivdokumente und deren Übertragung soll ereig- nisgesteuert (Freigabe eines Kommentares) oder in konfigurierbaren Zeitintervallen (z.B. wöchentlich) erfolgen. Der Auslöser ist vor Implementierung mit dem Auftraggeber abzu- stimmen.
+	Reposis15
+Der AG verwendet Reposis als Archivsystem. Das System soll das erzeugte PDF-Doku- ment unter korrekter Angabe aller relevanten Metadaten an Reposis übertragen können. Die grundsätzliche Erweiterbarkeit zur Unterstützung weiterer Schnittstellen zur Anbindung von Archivsystemen soll sichergestellt sein.
+	IF_005 Emailversand
+Das System muss in der Lage sein, Mitteilungen als Email an die hinterlegten Kontaktemails der Anwender zu versenden.
+	IF_006 Bereitstellen von Publikationen, Versionen, Kommentaren
+Das System soll über eine zugangsgeschützte API-Schnittstelle Informationen zu Inhalten und Aktivitäten in der Diskussionsplattform bereitstellen, z.B.
+* Dokument mit Metadaten
+* Vorschauansicht des Dokumentes
+* Dokumentliste (z.B. aktuelle Publikationen einer Sektion)
+* Kommentarliste (z.B. aktuelle Kommentare einer Sektion oder Gesamt)
+Ziel ist es, diese Informationen als dynamische Inhalte in der LandingPage oder einem ex- ternen CMS des AG zu veröffentlichen.
+Da es sich um eine neue Schnittstelle handelt bestehen keine konkreten Vorgaben zur tech- nischen Ausgestaltung der Schnittstelle, diese und die bereitgestellten Inhalte sind vor der Implementierung mit dem AG abzustimmen.
+
+
+
+
+
+
+
+
+15  https://www.gbv.de/Verbundzentrale/serviceangebote/reposis-repository-service
+
+
+
+
+	IF_007 Bereitstellen von Auswertungen
+Das System muss über eine zugangsgeschützte API-Schnittstelle Informationen zur Nut- zung bereitstellen, z.B.
+* Anzahl registrierter Anwender im System
+* Anzahl Besucher im System (Gesamt, in Zeitraum)
+* Anzahl Dokumente im System (Gesamt, in Zeitraum)
+* Anzahl Kommentare im System (Gesamt, in Zeitraum)
+* Dokumentaufrufe (je Dokument, Gesamt, in Zeitraum)
+Ziel ist es, diese Informationen als dynamische Inhalte in der LandingPage oder einem ex- ternen CMS des AG zu veröffentlichen.
+Da es sich um eine neue Schnittstelle handelt bestehen keine konkreten Vorgaben zur tech- nischen Ausgestaltung der Schnittstelle, diese und die bereitgestellten Inhalte sind vor der Implementierung mit dem AG abzustimmen. Auch Nutzung externer Analysetools möglich.
+	IF_008 Publikationsverzeichnisse
+Scientific Comments, also nach Review mit DOI freigegebene Kommentare sollen als ei- genständige Publikationen auffindbar sein.
+In der initialen Ausbaustufe ist keine Anbindung konkreter Publikationsverzeichnisse gefor- dert, die Erweiterbarkeit zur Unterstützung weiterer Schnittstellen zur Anbindung von Pub- likationssystemen zur Übermittlung von Kommentaren muss sichergestellt sein.
+
+Potentiell zu unterstützende Publikationsverzeichnisse wären
+* DNB16
+* CrossRef17
+* DOAJ18
+* DataCite 19
+* PubMed20
+* Web of Science (ISI)21
+	IF_009 Suchmaschinen
+Öffentlich zugängliche Dokumente und Kommentare sollen auch über gängige Suchmaschi- nen auffindbar sein. Die Durchsuchbarkeit der öffentlich zugänglichen Inhalte muss gewähr- leistet sein.
+
+
+
+
+16 https://www.dnb.de/
+17 https://www.crossref.org/
+18 https://doaj.org/
+19 https://datacite.org/
+20 https://pubmed.ncbi.nlm.nih.gov/
+21 https://clarivate.com/webofsciencegroup/solutions/web-of-science/
+
+
+ IF_010 Zitationsformate
+Zur Vereinfachung der Zitation der im System publizierten Dokumente in wissenschaftlichen Arbeiten sollen zu jedem Dokument die Zitationsangaben in verschiedenen Dateiformaten und Zitationsstilen zum Datei-Download zur Verfügung gestellt werden (UC_DU_010, Kap. 3.3.2.10). Es sollen mindestens die Dateiformate bibtex und RIS unterstützt werden. Der Anwender soll Dateiformat und Zitationsstil vor der Bereitstellung der Exportdatei wählen können. Der Administrator soll die jeweils zur Verfügung stehenden Zitationsstile konfigura- tiv anpassen oder ergänzen können (UC_AD_006, Kap. 3.3.6.7). Als Konfigurationsformat für die Beschreibung der der Exportformate und Zitationsstile sollen möglichst gängige Stil- Beschreibungsformate wie bibtex (*.bts) oder Endnote (*.ens) verwendet werden.
+
+4 Nicht-Funktionale Anforderungen
+Die Qualitätsanforderungen an das System werden nach den Qualitätsmerkmalen bzw. Teil- merkmalen gemäß der ISO-Norm 9126 strukturiert.
+
+4.1 Funktionalität
+Nicht-funktionale Anforderungen im Bereich Funktionalität betreffen das Vorhandensein von festgelegten Eigenschaften oder Funktionen des Systems
+	Richtigkeit/Genauigkeit
+
+ANF_NF_11_1Rechen- genauigkeitMussBerechnete Zahlwerte müssen auf zwei Nachkommastellen genau berechnet werden. Rundungsoperationen erfolgen kaufmännischANF_NF_11_2SortierungMussSofern nicht abweichend konkretisiert gelten folgende Regeln zur Sortierung:
+Die Sortierung erfolgt aufsteigend
+Die Sortierung von Datensätzen/Tupeln erfolgt nach den Re- geln der für die Sortierung verwendeten Attribute.
+Die Sortierung nach alphanumerischen Attributen erfolgt nach den Regeln der verwendeten Landessprache.
+Die Sortierung nach numerischen Attributen erfolgt nach den Regeln der verwendeten Landessprache.
+Die Sortierung von Datumswerten erfolgt chronologisch Leere Attributwerte werden ans Ende der Sortierung gestellt.	Interoperabilität
+Interoperabilität beschreibt die Fähigkeit des Systems, mit anderen vorgegebenen Syste- men zusammenzuwirken.
+
+ANF_NF_12_1Anbindung SchnittstellenMuss* Das System muss die in Kap.0 beschriebenen Schnitt- stellen zu den jeweils angebundenen Systemen unter- stützen.
+* Der unterbrechungsfreie Betrieb des Systems bei Nichtverfügbarkeit eines dieser Systeme muss sicher- gestellt sein.
+* Bei Wiederherstellung der Verfügbarkeit muss ohne manuellen Eingriff am System auch die funktionale In-
+teroperabilität wiederhergestellt werden.ANF_NF_12_2Zwischenab- lageMussVerwendete Texteingabefelder der Benutzerschnittstelle müs- sen das Einfügen von Inhalten aus der Zwischenablage zulas- sen.
+Verwendete Texteingabefelder der Benutzerschnittstelle müs- sen das Kopieren von Inhalten in die Zwischenablage zulas- sen.
+
+	Ordnungsmäßigkeit
+‚Ordnungsmäßigkeit‘ umfasst die Erfüllung von anwendungsspezifischen Normen, Verein- barungen, gesetzlichen Bestimmungen und ähnlichen Vorschriften.
+
+ANF_NF_13_1Zu	erfüllende StandardsMussDie in Kap.2.6.1 genannten Vorgaben sind einzuhalten.
+4.2 Sicherheit
+Die Anforderungen zur Sicherheit beschreiben die Fähigkeit des Systems, unberechtigten Zugriff, sowohl versehentlich als auch vorsätzlich, auf Programmfunktionen und Daten zu verhindern.
+	BSI IT-Grundschutzkatalog
+Programme und Daten sind gegen Angriffe aus dem Internet zu schützen. Der Auftragneh- mer stellt sicher, dass die Anwendung keine Sicherheitslücken enthält. Das Bundesamt für Sicherheit in der Informationstechnik (BSI) hat entsprechende IT-Grundschutz-Kataloge entwickelt, welche u.a. potenzielle Schwachstellen beschreiben und entsprechende Vor- kehrungsmaßnahmen vorschlagen.
+
+ANF_NF_21_1Umzuset- zende Sicher- heitsmaßnah- men	gemäß IT-Grund- schutzMussGemäß der BSI-Standards 100-1, 100-2 und 100-3 ist ein zu erreichendes Sicherheitsniveau zu spezifizieren und bei der Applikationsentwicklung einzuhalten. Relevante Bausteine und Gefährdungen des IT-Grundschutzkatalogs sind vom AN zu identifizieren und durch die jeweils empfohlenen Maßnah- men aus dem Maßnahmenkatalog des IT-Grundschutzes zu
+beantworten.ANF_NF_21_2OWASP-Stan-
+dardsMussDie Standards, Best Practices und Handlungsempfehlungen des Open Web Application Security Project (OWASP) sind zu erfüllen, Insbesondere sind geeignete Gegenmaßnahmen ge- gen die OWASP Top 10 Security Risks zu ergreifen. Gegen- maßnahmen sind in den folgenden Dokumenten spezifi- ziert: OWASP Top 1022, OWASP Web Security Testing Guide23ANF_NF_21_3Passwortge- brauchMussDie Vorgaben des IT Grundschutzes (M 2.11 Regelung des Passwortgebrauchs) sind zu beachten
+4.3 Zuverlässigkeit
+Nicht-funktionale Anforderungen im Bereich Zuverlässigkeit betreffen die Fähigkeit des Systems, sein Leistungsniveau unter festgelegten Bedingungen über einen festgelegten Zeitraum zu bewahren.
+
+
+
+
+22 https://wiki.owasp.org/?title=Special:Redirect/file/OWASP_Top_10-2017_de_V1.0.pdf
+23 https://owasp.org/www-project-web-security-testing-guide/
+
+
+	Reife / Fehlertoleranz
+
+ANF_NF_31_1Versagens- häufigkeitMussEs dürfen keine betriebsverhindernden Fehlerzustände auftre- tenANF_NF_31_2maximal zuläs- sige Totalaus- fälle während der Betriebs- zeitMussBeim Betrieb des Systems darf es nur in 0,2 % der Betriebszeit zu Totalausfällen kommen.	Verfügbarkeit
+
+ANF_NF_32_1vorgeschrie- bene	Verfüg- barkeitMussDie Verfügbarkeit des Systems muss mind. 99.8 % sein. Ein Ausfall des Systems in diesen Zeiten führt dazu, dass das Sys- tem nicht von außen erreichbar ist.	Robustheit
+
+ANF_NF_33_1Funktionsfä- higkeit   des
+Systems bei unvorhergese- henen Falsch- eingabenMussDas System soll so designt werden, dass es bei unvorherge- sehenen Falscheingaben des Benutzers (d. h. alle Datenein- gaben, die nicht explizit durch eine Validierung oder Plausibi- lisierung mit Fehlermeldung abgefangen sind), funktionsfähig bleibt. Der Benutzer muss also damit weiterarbeitet können. Das System befindet sich in einem definierten Fehlerzustand,
+der die Weiterarbeit mit dem System ermöglicht.ANF_NF_33_2Locking	von DatensätzenMussDas zeitgleiche Ändern ein- und desselben Datenfeldes eines Datensatzes durch zwei Benutzer muss softwareseitig verhin- dert werden. Dies kann durch optimistic locking oder durch pessimistic locking erfolgen. Die Sperre eines Datensatzes durch einen Benutzer muss im Fall eines pessimistic locking nach Ablauf eines konfigurierbaren Zeitraumes automisch auf-
+gehoben werden können.	Wiederherstellbarkeit
+
+ANF_NF_34_1Maximale Zeit bis zur Wieder- herstellung des SystemsMussBei einem Ausfall des Systems muss das System innerhalb eines angemessen Zeitraums wieder in Betrieb genommen werden können. Die Administration bzw. das Betriebspersonal muss mit Hilfe des Betriebshandbuches in der Lage sein, das
+System wiederherzustellen.ANF_NF_34_2Logging / Mo- nitoringMussDas Systems muss aufgetretene fachliche und technische Fehler und Aktivitäten in einer Logdatei je Instanz erfassen (inkl. Zeitstempel, Loglevel und Meldungstext). Die Logmel- dungen müssen von einem Überwachungstool ausgewertet werden können.
+Die Log-Levels können sich an üblichen Definitionen halten:
+- Fatal: Fehler, welcher zur Terminierung der Anwen- dung/Skripte führt oder
+- Error: Laufzeitfehler, welcher die Funktion der Anwendung behindert, oder unerwarteter Programmfehler
+- Warnung: fehlerhafter Aufruf einer Schnittstelle, Benutzer- fehler oder ungünstiger Programmzustand
+- Info: Laufzeitinformationen wie der Start und Stopp der An- wendung, Benutzeranmeldungen und -abmeldungen, sowie
+durchgeführte Geschäftstransaktionen.
+
+
+- Debug: Informationen zum Programmablauf. Wird im Nor- malfall nur in der Entwicklung oder zur Nachvollziehung eines Fehlers verwendet. Kann direkt ausgegeben werden.ANF_NF_34_3Tägliche	Da- tensicherung ermöglichenMussSoftware und Datenhaltung müssen so konzipiert sein, dass eine tägliche Datensicherung erfolgen kann.4.4 Benutzbarkeit
+Nicht-funktionale Anforderungen im Bereich Benutzbarkeit betreffen alle Eigenschaften des Systems, die zur Benutzung erforderlich sind bzw. zu einer ordnungsgemäßen Benut- zung befähigen.
+
+	Erlernbarkeit
+
+ANF_NF_41_1hinreichend gute Erlenbar- keitMussDas System gilt als hinreichend gut erlernbar, wenn 90% der Anwender die für Ihre Rolle relevanten Anwendungsfälle (…) intuitiv, also ohne Einarbeitung oder Lesen der Benutzerdoku-
+mentation ausführen kann.ANF_NF_41_2Benutzerhand- buch aus dem System aufru- fenMussDie aktuelle Version des Benutzerhandbuchs bzw. die Benut- zerdokumentation (siehe Kapitel Liefergegenstände) soll in der Anwendung hinterlegt werden und jederzeit aus der An- wendung aufgerufen werden können. Die Anforderung gilt als erfüllt, wenn das Dokument als PDF-Datei in einem separaten
+Browserfenster oder -Tab geöffnet werden kann.ANF_NF_41_3Aufwand	für das	Durchle- sen der Benut- zerdokumen- tationSollDer Aufwand für das Durchlesen der Benutzerdokumentation soll 2 Stunden nicht übersteigen.ANF_NF_41_1 kann zu Beginn der Testphase verifiziert werden, indem die für die Use- Cases erstellten Testfälle erstmalig von den Benutzern durchgeführt werden. Sind 90 % der Benutzer während des Testlaufs in der Lage, die für Ihre Rolle relevanten Testfälle er- folgreich durchzuführen, dann gilt die Anforderung als erfüllt. Technische Fehler, die die erfolgreiche Durchführung der Testfälle verhindern zählen hierbei nicht.
+
+
+	Verständlichkeit
+Nicht-funktionale Anforderungen im Bereich Verständlichkeit betreffen den Aufwand für den Benutzer, das Konzept und die Anwendung zu verstehen
+
+
+ANF_NF_42_1generelle Vor- gaben für die Benutzerober- flächeMussDie Verständlichkeit der Anwendung erhöht sich für die Benut- zer dann, wenn die Vorgaben an die Benutzerführung gängi- gen Standard-Softwareprodukten entsprechen.
+
+
+ANF_NF_42_3Einheitlicher Aufbau	und Design der Be- nutzeroberflä- cheMussBeim generellen Aufbau und Design der Masken soll auf Ein- heitlichkeit geachtet werden. Ein einheitliches Layout erleich- tert die Verständlichkeit des Systems, da der Benutzer wieder- kehrende Bedienelemente immer an derselben Stelle vorfin- det, z. B. Menüs, Buttonleisten, Toolbars, An- & Abmeldung,
+etc. In begründeten Fällen kann vom einheitlichen Aufbau ab- gewichen werden.ANF_NF_42_3Orientierung der Benutzer- führung	am fachlichen Ar- beitsablaufMussDie Benutzerführung soll sich möglichst nach am fachlichen Arbeitsablauf und den fachlichen Prozessschritten orientieren, um die Verständlichkeit bei den Benutzern zu erhöhen.ANF_NF_42_4Texte und La- bels der Be- nutzeroberflä- che in engli- scher SpracheMussAlle Texte, Menüeinträge und Labels der Benutzeroberfläche müssen in englischer Sprache verfasst sein. Des Weiteren sol- len fachliche Begrifflichkeiten und Formulierungen, die für die Benutzer des Systems sprechend und verständlich sind ver-
+wendet werden. Daher sind die Texte entweder vom AG zuzu- liefern oder eng mit dem AG abzustimmen. (s. Kap. 3.4.1)	Bedienbarkeit
+Nicht-funktionale Anforderungen im Bereich Bedienbarkeit betreffen den Aufwand des An- wenders, die für ihn relevanten Aktivitäten auszuführen.
+
+
+ANF_NF_43_1BarrierefreiheitMussDie Anwendung muss barrierefrei gestaltetet werden. Konkret sind die unter Priorität I aufgeführten Anforderungen aus An- lage 1 der Verordnung zur Schaffung barrierefreier Informati- onstechnik nach dem Behindertengleichstellungsgesetz (BITV
+2.0) umzusetzen.ANF_NF_43_2Bedienung mit Maus, Tastatur und Touchdis- playMussDie Anwendung muss sowohl mit Tastatur, Maus und Touch- display bedient werden können.ANF_NF_43_3Kennzeich- nung	von PflichtfeldernMussPflichtfelder müssen in der Oberfläche des Systems deutlich als solche gekennzeichnet werden. Bei Falscheingaben sollen
+unmittelbar nach der Eingabe eine Fehlermeldung eingeblen- det werden, z. B. direkt unter dem Feld.ANF_NF_43_4Validie- rung/Plausibili- sierung	von EingabenFormularfelder sind so zu konfigurieren, dass so weit wie mög- lich korrekte Daten vom Anwender erfasst werden. Daher sind Eingaben zu validieren und auf Plausibilität zu prüfen. Einga-
+befelder sind, sofern fachlich sinnvoll und möglich, mit validen Defaultwerten vorzubelegen.ANF_NF_43_5möglichst schneller und flüssiger	Ar- beitsablaufMussBeim Bedienkonzept und der Benutzerführung, soll darauf ge- achtet werden, die Anzahl der Benutzereingaben (Anzahl der Klicks oder Tastatureingaben), die ein Benutzer benötigt, um einen UseCase abzuschließen so klein wie möglich zu halten, ohne die Verständlichkeit und Übersichtlichkeit zu stark zu be- einträchtigen. Die Reihenfolge und die Position von Navigati- onselementen, wie z. B. Menüpunkte, Buttons oder Links müs- sen bezogen auf die häufigsten Tätigkeiten (Use Cases) der Benutzer optimiert sein, mit dem Ziel einen möglichst flüssigen
+und schnellen Arbeitsablauf mit dem System zu ermöglichen.
+
+
+ANF_NF_43_6Übersichtlich- keit der Benut- zeroberflächeSollFelder bzw. Oberflächenelemente die fachlich zusammenge- hörenden Informationen beinhalten, sollen zu thematischen Blöcken zusammengefasst werden. Zur Erhöhung der Über- sichtlichkeit sollen die Blöcke aus- und einklappbar sein. Blö-
+cke die Falscheingaben enthalten sollen kenntlich gemacht werden (z. B. durch eine Hintergrundfarbe oder ein Symbol).ANF_NF_43_7Softwareergo- nomieMussAktuelle, einschlägige Normen und Regeln der Softwareergo- nomie sind anzuwenden. Da-zu gehören insbesondere die Normen Teil 11 bis 17, 110,171, 302 und 303 der Normen- reihe DIN EN ISO 9241 „Ergonomie der Mensch-System-In- teraktion“ und DIN EN ISO 14915 Softwareergonomie für Mul- timedia-Benutzungsschnittstellen Teil 1. Mind. Diese beiden DIN-Normen sind beim Entwurf und Design der Benutzerober-
+fläche umzusetzen.ANF_NF_43_8LesbarkeitMussWenn der Akteur die Bildschirm- oder Fenstergröße ändert muss das System die Anzeige des Dokumentes so anpassen, dass die Lesbarkeit möglichst unverändert gewährleistet ist.	Sonstige Anforderungen
+
+ANF_NF_44_1Umsetzung des	Stylegui- desMussDas Oberflächenlayout ist entsprechend der Vorgaben des Styleguide der Leopoldina (s. Kap.12) umzusetzen.ANF_NF_44_2User Centered Design der Be- nutzeroberflä- cheMussUm die Erlernbarkeit, Bedienbarkeit und Verständlichkeit des Systems sicherzustellen und bereits in frühen Projektphasen zu erhöhen, soll beim Projektvorgehen ein prototypisches Vor- gehen zur Anwendung kommen. Anhand eines Prototyps der Benutzeroberfläche, der aus einem Oberflächenmock oder Klickdummy bestehen kann. Soll eine Rückkopplung mit den späteren Anwendern erfolgen. Das Design der Benutzerober- fläche ist vom AG freizugeben, bevor die Benutzeroberflä-
+che/das Frontend des Systems implementiert wirdANF_NF44_3Sessionüber- greifende Ein- stellungenSollSessionübergreifendes Speichern der Anpassungen zur Dar- stellung sollten möglich sein4.5 Effizienz
+	Zeitverhalten
+
+ANF_NF_51_maximale Ant- wortzeitenMussSzenario	max. Antwortzeit
+Nutzungsszenario mit lesenden/schreibenden Zugriffen
+auf einen Datensatz (laden und anzeigen / speichern) 0,5 s Generierung von PDF- aus Dokument (Umfang 2S.)  2 s Aufruf und Anzeige von Dokumenten	0,5 s Suchanfrage geringer Komplexität
+(d.h. Suche mit <3 Suchkriterien)	1 sANF_NF_51_2Anzahl gleich- zeitiger HTTP- RequestsMussDie Anwendung muss gleichzeitig 100 HTTP-Requests (z.B. Suchvorgänge, lesende Zugriffe, schreibende Zugriffe) bedie- nen können. Die Systemumgebung ist entsprechend für diese
+Anzahl an Requests ausgelegt.ANF_NF_51_3Rückmeldung an den Benut-
+zer, wenn dasMussDas System muss bei Reaktionszeiten/Antwortzeiten größer 1 Sekunde, dem Benutzer deutlich machen, dass das System
+
+
+System einen Request abar- beitetdie Aktion immer noch durchführt, z. B. durch ein sich drehen- des Rädchen. Ausgenommen hiervon ist der Import von Daten
+in das System, dieser kann auch durch Hintergrundjobs reali- siert werden.ANF_NF_51_4Single-Page Webanwen- dungopti- onalUm die Performanz zu erhöhen besteht Interesse daran, das System als Single-Page Webanwendung umzusetzen. Durch das dynamische Nachladen von Webseiteninhalten kann die Performanz erhöht werden, da zunächst nur die für den Be- nutzer sichtbaren Teile einer Webseite geladen und angezeigt werden und nicht-sichtbare Teile anschließend dynamisch im
+Hintergrund nachgeladen werden. Hierbei handelt es sich aber um eine optionale Anforderung.	Verbrauchsverhalten
+
+ANF_NF_52_1Mengenge- rüsteMussDas System muss so gestaltet sein, dass es mit den folgenden Mengengerüsten performant betrieben werden kann:
+
+* ~100 Publikationen
+* ~1000 registrierte Anwender
+* ~ 1000 Zugriffe täglich
+* ~ 0.5s für SeitenaufrufANF_NF_52_2SkalierbarkeitSollDas System soll skalierbar, d.h. auf höhere als die in NF_52_1 genannten Zugriffszahlen anpassbar sein4.6 Änderbarkeit
+Nicht-funktionale Anforderungen im Bereich Änderbarkeit betreffen den Aufwand, der er- forderlich ist, Änderungen an der Software vorzunehmen. Dies können Korrekturen, Ver- besserungen oder geänderte Anforderungen sein.
+
+	Analysierbarkeit
+
+ANF_NF_61_1Dokumenta- tion des Sys- temsMussUm die Analysierbarkeit des Systems zu erhöhen hat der AN alle im Kapitel Liefergegenstände aufgeführte Dokumentatio- nen zu erstellen und aktuell zu halten. Des Weiteren sind im Quellcode aussagekräftige Kommentare in englischer Spra- che zu erfassen. Darüber hinaus sollen Anwendungskompo-
+nenten, Klassen und Methoden im Code dokumentiert sein.ANF_NF_61_Richtlinien für die Implemen- tierung / das CodingMussHistorisierung der Codes innerhalb der Software-Entwicklung (idealerweise bei jedem Commit), Einführung eines Versions- kontrollsystems (beispielweise mit GIT)	Modifizierbarkeit
+
+ANF_NF_62_1Dokumenta- tion des Sys- temsMussUm die Analysierbarkeit des Systems zu erhöhen hat der AN alle im Kapitel Liefergegenstände aufgeführte Dokumentatio- nen zu erstellen und aktuell zu halten. Des Weiteren sind im Quellcode aussagekräftige Kommentare in englischer Spra-
+che zu erfassen. Darüber hinaus sollen Anwendungskompo- nenten, Klassen und Methoden im Code dokumentiert sein.
+
+
+ANF_NF_62_2Installation ei- ner neuen Ver- sion des Sys- temsMussDie Installation einer neuen Version/eines neuen Releases des Systems muss nur mit Hilfe des Betriebshandbuches und der Installationsanleitung vom Betriebspersonal des Ags durchführbar sein.ANF_NF_62_3Konfigurierbar- keit der Werte- listenMussWo immer technisch möglich (vor allem dokumentarische Werteliste, die im Programm-code in der Verarbeitungslogik nicht gesondert abgefragt werden, wie z. B. Workflow-Status) und fachlich sinnvoll (Werteliste ändert sich einigermaßen re- gelmäßig) müssen Wertelisten innerhalb der Anwendung ad- ministrierbar, d. h. konfigurierbar sein. So soll verhindert wer- den, dass aufgrund kleinerer Änderungen an Wertelistenein- trägen eine neue Version des Systems geliefert und installiert werden muss. Insbesondere soll die Zuweisung von Rechten
+zu Rollen konfigurierbar sein (entweder innerhalb des Sys- tems oder durch Anbindung eines LDAPs).ANF_NF_62_4Konfigurierbar- keit der Doku- mentenvorla- genMussText und das Layout der Mitteilungs- und Dokumentenvorla- gen änderbar sind, d. h. vom AG angepasst werden können, ohne dass die Lieferung eines neuen Releases dafür notwen- dig istANF_NF_62_5Anpassbarkeit des	Rollen-
+und	Rechte- modellsMussDas System muss es dem Administrator ermöglichen, Rollen zu erstellen oder zu ändern
+Das System muss es dem Administrator ermöglichen, einer Rolle funktionale Rechte zuzuordnen oder zu entziehen.ANF_NF_62_6Anpassbarkeit der	Zitations- stileMussDas System muss es dem Administrator ermögliche, die für den Export von Zitationsinformationen zur Verfügung gestell- ten Zitationsstile anzupassen, Stile hinzuzufügen oder zu ent-
+fernen.	Stabilität
+
+ANF_NF_63_1Seiteneffekte/ von	Codeän- derungenMussDer AN verpflichtet sich entwicklungsbegleitende Unit-Tests zu schreiben, die automatisch vom Buildserver beim Deployen
+einer neuen Version des Systems automatisch ausgeführt werden.	Prüfbarkeit
+
+ANF_NF_64_1maximale Dauer	eines Regressions- testsMussEin Regressionstest des Systems (Gesamttest/Kompletttest) darf maximal einem Aufwand von 1 Personentagen erzeugen.ANF_NF_64_2Vorgaben an den Oberflä- chentestMussOberflächentests des Systems müssen in allen unterstützten Browsern (siehe (ANF_NF_050) durchgeführt werden (es ist zu prüfen, ob der Aufwand durch Einsatz au-tomatisierter
+Testfälle, die in mehreren Browsern abgespielt werden kön- nen, minimiert werden kann).ANF_NF_64_3Testautomati- sierungMind. 25 % der spezifizierten Testfälle (siehe Kapitel Lieferge- genstände) sollen automatisiert werden. Der AN wählt ein pas- sendes Tool für die Erstellung/Aufzeichnung der automatisier- ten Testfälle aus und stellt die Testfälle dem AG als Lieferbe- standteil zur Verfügung. Die Testfälle müssen beim AG aus-
+geführt werden können (technisch und lizenzrechtlich/be- schaffungsrechtlich).
+
+
+ANF_NF_64_4Erzeugung produktionsna- her TestdatenDer Auftraggeber stellt dem Auftragnehmer eine hinreichend große Menge von möglichst produktionsnahen Testdaten zur Verfügung.4.7 Übertragbarkeit
+Nicht-funktionale Anforderungen im Bereich Übertragbarkeit beschreiben die Eignung des Systems, von einer Umgebung in eine andere übertragen zu werden. Dabei kann es sich um eine organisatorische Umgebung, eine andere Hardware- oder Softwareumgebung handeln.
+	Anpassbarkeit
+Nicht-funktionale Anforderungen im Bereich Anpassbarkeit beschreiben die Möglichkeit, die Software an verschiedene Umgebungen anzupassen.
+
+ANF_NF_71_1zu unterstüt- zende Browser und Plattfor- menMussDas System muss als Webanwendung realisiert werden und clientseitig mit den Browsern Edge, Firefox (aktuelle ESR-Ver- sion), sowie Chrome und Safari (jeweils aktuelle Version) be- dienbar sein, Die Marktabdeckung der unterstützten Desktop- Browser und Browserversionen soll zum Zeitpunkt der Auslie- ferung 75% nicht unterschreiten.
+
+Das System soll auch mobil, also auf Android- und iOS-Gerä- ten genutzt werden können. Die Marktabdeckung zum Zeit- punkt der Auslieferung der unterstützten Geräte bzw. deren
+Standardbrowser soll 75% nicht unterschreiten.	Installierbarkeit
+
+ANF_NF_72_1Installation des SystemsInstallationsroutinen und Dokumentation des Systems müs- sen so gestaltet sein, dass die Installation der Fachanwen- dung nur mit Hilfe des Betriebshandbuches und der Installati-
+onsanleitung vom Betriebspersonal des AGs durchführbar ist.
+	Koexistenz
+
+ANF_NF_73_1Multi	Tab BrowsingMussEin Benutzer muss in der Lage sein, parallel in zwei oder mehr Browsertabs mit der Webanwendung zu arbeiten, ohne dass es dadurch zu Fehlern kommt. Das bedeutet, dass soge- nannte Multi-Tab Browsing möglich sein muss. Dadurch wird der Benutzer in die Lage versetzt eine Suchseite oder ein Dashboard parallel zu einer anderen Seite oder Maske der
+Webanwendung zu öffnen und zu bedienen.	Austauschbarkeit
+
+ANF_NF_74_1Komponenten austauschenSollVerwendete Komponenten, Bibliotheken oder Frameworks (z.B. Datenhaltungskomponente, IAM, Logging, UI-Frame-
+works) sollen möglichst unabhängig voneinander aktualisiert oder ausgetauscht werden können.
+
+	Randbedingungen
+Randbedingungen legen Bedingungen und Einschränkungen fest, unter denen das Projekt durchgeführt wird und die für die Entwicklung des Systems zu beachten sind (s. Kap.0)
+
+ANF_NF_75_1Altdatenüber- nahmekannVor Systemstart soll eine Migration/Übernahme der Altdaten des Vorgängersystems erfolgen. Der AN kann ein Migrations- konzept für die Übernahme der Altdaten aus dem Vorgänger- system (PaperHive24) erarbeiten. Werden Daten bewusst nicht vom Altsystem in das zu entwickelnde System über- nommen, so ist dies im Migrationskonzept kenntlich zu ma- chen und zu begründen.
+
+Dieses Migrationskonzept soll den Übernahmeweg und die Übernahmeroutinen für die Altdaten beschreiben sowie eine Aufwandschätzung dafür erstellen. Das Migrationskonzept sowie die verwendeten Routinen werden dem AG zur Nut-
+zung zur Verfügung gestellt.ANF_NF_75_2Webanwen- dungMussDie Anwendung soll über ein reines Webinterface ohne die Verwendung von Browser-Plug-ins bereitgestellt werden. Die
+Kommunikation muss über HTTPS (SSL-Zertifikate) ver- schlüsselt sein.ANF_NF_75_3ErreichbarkeitDas System soll den Anwendern jederzeit zur Nutzung zur Verfügung stehen, als Regel-Betriebszeit ist von 24h/Tag an 7d/Woche auszugehen.ANF_NF_75_4Nutzungs- rechte an der SoftwareMussDie Nutzungsrechte an der Software liegen beim AG. Die für die Applikation neu entwickelten Teile müssen für den Auftrag- geber quelloffen und selbständig erweiterbar sein. Der AG darf die Bearbeitungsrechte auf Dritte übertragen und den Quell-
+code unter einer OpenSource-Lizenz veröffentlichen.ANF_NF_75_5Wartung, Sup- port und Wei- terentwicklungopti- onalDer AN übernimmt auch Wartung, Support und Weiterentwick- lung des Systems ab Produktivsetzung des Systems.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+24 https://paperhive.org/
+
+5 Datenschutzanforderungen
+Hinsichtlich Datenschutzes und Datensicherheit sind bei Realisierung und Betrieb des Systems zu beachten:
+* die BSI-Standards für den IT-Grundschutz insbesondere in den Bereichen
+- Passwortregeln
+- Sicherheitsvorfälle
+- Virenschutz
+- Datensicherungskonzept
+- Notfallvorsorge
+* Datenschutzgrundverordnung (DSGVO) und die EU-Richtlinie für den Datenschutz
+
+6 IT-Sicherheitsanforderungen und Schutz- bedarf
+Im Rahmen der Betriebsumgebung sind geeignete Maßnahmen zu treffen, die Basissi- cherheit beim Zugriff auf das System und die Schnittstellen zu gewährleisten. Dazu gehö- ren z. B. gültige SSL-Zertifikate der aktuell als sicher angesehenen Sicherheitsstufe.
+
+Die aus dem in Kapitel 4.2 festgestellten Schutzbedarf abgeleiteten IT-Sicherheitsanforde- rungen sind einzuhalten.
+
+7 Lebenszyklus
+
+Die Diskussion und Fortschreibung von wissenschaftlichen Publikationen ist ein neuer An- satz in der wissenschaftlichen Kommunikation und Arbeit, daher sind Anpassungen der beschriebenen Verfahren mit zunehmender Nutzung und Erfahrung mit den Abläufen wahrscheinlich. Eine einfache Anpassbarkeit muss im Entwurf der Software berücksichtigt werden
+
+Bei der zu entwickelnden Anwendung soll es sich um ein nachhaltig eingesetztes Werk- zeug handeln. Der AG wünscht daher, dass für die angebotene Software die Wartung und Pflege auch nach erfolgter Abnahme durch den Auftragnehmer sichergestellt werden kann.
+
+Dies umfasst insbesondere die Fehlerbehebungen und Anpassungen an die technische Weiterentwicklung der zugrundeliegenden Software (z. B. Freigaben für aktuelle Versionen eingesetzter Standardsoftware oder notwendiger Betriebssysteme).
+
+Mögliche Ausbaustufen des Systems sind u.a.
+* die Integration weiterer Schnittstelle zu Drittsystemen (Redaktionssystem, Ar- chivsysteme, Verzeichnisse)
+Die funktionale Weiterentwicklung der Anwendung über den beschriebenen Rahmen so- wie die regelmäßige Wartung und Pflege ist nicht Bestandteil des Lastenheftes.
+Die Auftraggeber behalten sich optional vor, während der Vertragslaufzeit eine weitere Leistungsphase zu definieren.
+
+8 Gesamtarchitektur
+Die beschriebene Diskussionsplattform soll als responsive Webanwendung umgesetzt werden, für die Architektur der Lösung ist daher ein webbasiertes Client-Server-Modell vorgesehen, das mit seinen fachlichen Modellen die in Kap. 0 beschriebenen Schnittstel- len zu externen Informationssystemen besitzt.
+
+Der AG beabsichtigt, den SourceCode der Diskussionsplattform unter einer OpenSource- Lizenz zu veröffentlichen. Das zu verwendende Lizenzmodell ist vor der Implementierung mit dem AG festzulegen, dem AN obliegt es, die Konformität aller verwendeten Kompo- nenten und Bibliotheken mit dem gewählten Lizenzmodell sicherzustellen.
+
+Der Anbieter liefert die Vorgaben und Konfigurationsangaben für die Hardware- und Softwarearchi- tektur und der benötigten IT-Infrastruktur des Gesamtsystems, u.a.
+- Benötigten Serverinstanzen (incl. Hardware-, bzw. Virtualisierungsanforderungen)
+- Benötigte Basissoftware und Softwarekomponenten auf den Server-Instanzen
+- Sonstigen Infrastrukturkomponenten des Gesamtsystems
+
+Alle benötigten Basissoftware-Installationen für die IT-Systeme sind vom Anbieter differen- ziert aufzuführen und können bei Bedarf vom Auftraggeber bereitgestellt werden, sofern diese nicht Bestandteil der Lieferung des Auftragnehmers sind. Dabei sind die systemtech- nischen Anforderungen zu berücksichtigen
+
+9 Lieferumfang
+
+KurzbezeichnungAnmerkungBeschreibung der GeschäftsprozesseBeschreibung der FunktionenKomponentendiagrammKontextdiagrammDatenmodellFinalisierte FassungBeschreibung/Abbildung der technischen ArchitekturBetriebshandbuchvollständig in Bezug auf Installation und KonfigurationBenutzerdokumentationBenutzerhandbuch und ggf. weitere Materi- alien (wie z.B. Video-Tutorials, Guided
+Tours)fachliche Testfallbeschreibungenzur Durchführung von RegressionstestsSoftwareEine installierbare Version der SoftwareQuellcodeQuellcode der Anwendung in kompilierba- rer Form
+Dokumentation zum Kompilieren des Quell- codes und Erzeugung der Deployables nebst ergänzender Dokumentation und Lie- ferung der Abhängigkeiten, sofern nicht
+über zentrale Repositories verfügbar (finali- sierte Fassung)Tabelle 7: Lieferumfang
+
+10 Abnahmekriterien
+Es gelten die im EVB-IT Systemvertrag und der EVB-IT definierten Abnahmeregelungen.
+Die Abnahme erfolgt durch den AG mit der Bereitstellung der geschuldeten Liefergegen- stände (Kap. 9). Abnahme von Teilleistungen können erfolgen, sofern dies für den AG zu- mutbar sind. Die Abnahme erfolgt dann zunächst für jeden Teil einzeln, nach Lieferung des letzten Teils erfolgt eine Schlussabnahme.
+Zeigen sich bei der Abnahmeprüfung erhebliche Mängel, so wird die Abnahme zurückge- stellt. Der AN behebt die festgestellten Mängel innerhalb einer angemessenen Frist und lädt den Kunden zu einer neuen Abnahmeprüfung ein.
+Betriebsverhindernde Mängel liegen vor, wenn eine oder mehrere vereinbarte Funktio- nalitäten einer Leistung nicht oder nur mit wesentlicher Einschränkung verfügbar sind und kein Workaround existiert oder bei bestimmungsgemäßer Nutzung Daten verloren gehen oder andere erhebliche Betriebsstörungen verursachen.
+Betriebsbehindernde Mängel liegen vor, wenn die erbrachte Leistung von den vereinbar- ten Funktionalitäten zwar abweicht, diese Abweichung jedoch keinen erheblichen Einfluss auf den bestimmungsgemäßen Gebrauch der Leistung hat oder wenn der bestimmungs- gemäße Gebrauch mit Hilfe eines Workarounds sichergestellt werden kann.
+Geringfügige Mängel, welche die Funktionalitäten von Systemen nicht erheblich beein- trächtigen, werden nur im Rahmen ordentlicher Updates oder Releases behoben.
+Die Anzahl der abnahmeverhindernden Mängel wird im EVB-IT Vertrag festgelegt.
+Leistungen gelten als abgenommen, sobald das Abnahmeprotokoll von beiden Parteien unterzeichnet ist. Die Leistungen gelten automatisch als abgenommen, wenn der Kunde nicht binnen 30 Tagen nach der Bereitstellung zur Abnahme seine Ablehnung schriftlich er- klärt und mit erheblichen Mängeln begründet.
+
+11 Glossar
+
+BegriffBeschreibungbibtexTool u. Dateiformat zur Verwaltung von Bibliographien mit LATEX.BITSBook Interchange Tag Set (BITS) JATS extension Erweiterung von JATS für wissenschaftliche BücherCC-BYCreative Commons Urheberrechtslizenz, die Weiterverwendung einer Publika- tion unter Nennung des OriginalautorsDNBDeutsche NationalbibliothekDOAJDirectory of Open Access JournalsDOIEin Digital Object Identifier (deutsch Digitaler Objektbezeichner) nach ISO 26324 soll ein eindeutiger und dauerhafter digitaler Identifikator für physische, digitale oder abstrakte Objekte sein.GBVGemeinsamer BibliotheksverbundGolden WayDer goldene Weg bezeichnet Erstveröffentlichungen (Bücher, Zeitschriftenauf- sätze, Proceedings-Beiträge etc.) in einem Open-Access-Verlag bzw. in einer Open-Access-Zeitschrift. Es existiert ein Qualitätssicherungsprozess (z. B. Peer-Review-Verfahren).Green WayDer grüne Weg bezeichnet die Zweitveröffentlichung von Publikationen in ei- nem institutionellen oder fachspezifischen Repository oder auch die Selbstar- chivierung auf der Autorenwebseite.JATSJournal Article Tag Suite ist eine XML-Auszeichnungssprache, die für den Austausch und die Archivierung wissenschaftlicher Publikationen benutzt wird.NAL-Live
+
+(Leopol- dina)NAL-live will offene wissenschaftliche Diskussionen anregen, moderieren und dokumentieren. Einmal publizierte Artikel werden als „Living Documents" von der Scientific Community fortlaufend aktualisiert. Die Autoren, aber auch an- dere Wissenschaftlerinnen und Wissenschaftler können sie nach der ersten Veröffentlichung (Version 1.0) in einem begutachteten Verfahren weiterentwi- ckeln. Dadurch gehen neue wissenschaftliche Entwicklungen in die Artikel ein, neue Literatur, neue Methoden und neue Interpretationsmöglichkeiten werden berücksichtigt. So entstehen kommentierte und ergänzte (Version 1.1 etc.) und überarbeitete bzw. aktualisierte (Version 2.0 etc.) Artikel.OJSOpen Journal Systems ist eine Open-Source-Software für die Verwaltung und Veröffentlichung von wissenschaftlichen Zeitschriften. Sie wird vorwiegend für Open-Access-Zeitschriften eingesetzt.Open Ac- cessDer freie Zugang zu wissenschaftlicher Informationen. Ein wissenschaftliches Dokument unter Open-Access-Bedingungen zu publizieren, gibt jedermann die Erlaubnis, dieses Dokument zu lesen, herunterzuladen, zu speichern, es zu verlinken, zu drucken und damit entgeltfrei zu nutzen. Darüber hinaus kön- nen über freie Lizenzen den Nutzern weitere Nutzungsrechte eingeräumt wer- den, welche die freie Nach- und Weiternutzung, Vervielfältigung, Verbreitung oder auch Veränderung der Dokumente ermöglichen
+
+
+BegriffBeschreibungDie Vorteile von Open-Access-Publizieren gegenüber konventionellem Publi- zieren mit Zugangsbeschränkungen:
+
+* Kürzere Dauer des Publikationsprozesses
+* Größere Sichtbarkeit (bei Publizieren in Repository oder Open-Access- Verlag)
+* Größere ZitierhäufigkeitOpen Ac- cess JournalOpen-Access-Zeitschriften sind Zeitschriften, deren Artikel unmittelbar mit Er- scheinen der Zeitschrift kostenlos und frei von weiteren Einschränkungen weltweit zugänglich sind. Beiträge in Zeitschriften, die dieser Definition ent- sprechen, erscheinen in der Regel unter einer freien Lizenz, die durch die Au- tor/innen vergeben wird; auf einen Copyright-Transfer an die Zeitschrift ver- zichten diese Zeitschriften. Gleichzeitig gibt es viele Zeitschriften, die ihre In- halte zur kostenlosen Nutzung bereitstellen, aber keine freie Lizenz vergeben. Open-Access-Zeitschriften sind primäres Medium des so genannten "golde- nen Wegs".ORCIDOpen Researcher and Contributor ID, kurz ORCID, ist eine Kennung für For- scherinnen und Forscher, die ihnen u. a. die Pflege ihrer Publikationsliste er- leichtert. Jede Person, die im wissenschaftlichen Arbeitsprozess einen Beitrag leistet, kann sich über ihre ORCID iD mit ihren Publikationen, Forschungsda- ten und anderen Produkten des Forschungsprozesses (zum Beispiel Soft- ware) eindeutig vernetzen. Damit werden diese Objekte sichtbar und tech- nisch verlässlich mit ihren Erschafferinnen und Erschaffern verbunden.PublissoPUBLISSO ist das Open-Access-Publikationsportal für die Lebenswissen- schaften von ZB MED, das größte Informationszentrum für lebenswissen- schaftliche Literatur- und Informationsversorgung in Europa
+PUBLISSO bittet kostenlose Beratungs- und Workshopangebote zu allen Fra- gen bezüglich „Open Access“ und „Digitales Publizieren“. Diese richten sich sowohl an Forschende, als auch an Bibliothekarinnen und Bibliothekare sowie an alle, die sich für Open Access einsetzen.
+Die Publikationsplattform PUBLISSO von ZB MED - Informationszentrum Le- benswissenschaften bietet innovatives Open Access Publizieren ohne Medi- enbrüche. Basierend auf dem Open Source Content Management System Drupal verfügt PUBLISSO über ein flexibles Rollen- und Rechtesystem, wodurch Editorial Office und Herausgebern eine unkomplizierte Userverwal- tung und die Einrichtung systemimmanenter Workflows ermöglicht werden.
+Dank der Versionierung können etwa einzelne Kapitel eines Buches jederzeit aktualisiert und an den neuesten Stand der Forschung angepasst werden.RISResearch Information System (Dateiformat)SCScientific Comment, begutachteter, mit DOI veröffentlichter und zitierbarer Kommentar zu einer wissenschaftlichen Publikation
+12 Anlagen
+Anlagen zum Lastenheft sind in folgender Ordnerstruktur abgelegt: ./Anlagen
+
+NrDokumentBeschreibung12019 Leopoldina Corporate Design Handbuch.pdfGestaltungsrichtlinien mit Anwendungs- beispielen für Publikationen22019 04 08 NAL-live manuscript flow.pdfKonzept der Zeitschrift NAL-live
+13 Abbildungsverzeichnis
+Abbildung 1: Prozesslandkarte	8
+Abbildung 2: Bereitstellung zur Diskussion	9
+Abbildung 3: Diskussionsphase	10
+Abbildung 4: Prozess Überarbeitung	11
+Abbildung 5: Interne und externe Stakeholder	12
+Abbildung 6: Fachliches Datenmodell	19
+Abbildung 7: Anwendungsfälle EP_001	25
+Abbildung 8 UseCases zu EP_002 Dokumente nutzen	29
+Abbildung 9: Dokumentansicht	30
+Abbildung 10: UseCases zu EP_003 Kommentare erstellen	37
+Abbildung 11: Aktivitätsdiagramm EP_003 Kommentar erstellen	38
+Abbildung 12:Zustandsdiagramm Kommentare	40
+Abbildung 13: Anwendungsfälle Dashboard	43
+Abbildung 14: Dashboard	44
+Abbildung 15: Anwendungsfälle Benutzerverwaltung	50
+Abbildung 16: Registrierung über ORCID (Gestaltungsvorschlag)	52
+Abbildung 17: Anmeldung über ORCID (Gestaltungsvorschlag)	56
+Abbildung 18: Anwendungsfälle Stammdaten verwalten	57
+
+14 Tabellenverzeichnis
+Tabelle 1: Stakeholder	14
+Tabelle 2: Zu erfüllende Standards	15
+Tabelle 3: Rollen	18
+Tabelle 4: Übersicht Epics	24
+Tabelle 5: Sichtbare Dashboard-Inhalte je Rolle	44
+Tabelle 6: Ereignisse, Mitteilungen und Empfänger	50
+Tabelle 7: Lieferumfang	81
+
+
+
+
+
+
+
+
+
+
+
+
