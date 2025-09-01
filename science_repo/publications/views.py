@@ -383,6 +383,124 @@ class PublicationViewSet(viewsets.ModelViewSet):
         from core.exceptions import format_error_response
         return format_error_response('No published version found.', status.HTTP_404_NOT_FOUND)
 
+    @action(detail=True, methods=['get'])
+    def timeline(self, request, pk=None):
+        """
+        Return a combined timeline of versions and comments for this publication.
+        Each event contains: type (version/comment), date, label, ids, and status.
+        """
+        publication = self.get_object()
+        # Collect version events
+        version_events = []
+        for v in publication.document_versions.all().order_by('version_number'):
+            version_events.append({
+                'type': 'version',
+                'version_number': v.version_number,
+                'document_version_id': v.id,
+                'doi': v.doi,
+                'status': v.status,
+                'status_date': v.status_date,
+                'label': f"v{v.version_number} {v.status}"
+            })
+        # Collect comment events (accepted + draft/under_review) for visibility
+        from comments.models import Comment
+        comment_qs = Comment.objects.filter(document_version__publication=publication).order_by('created_at')
+        comment_events = []
+        for c in comment_qs:
+            comment_events.append({
+                'type': 'comment',
+                'comment_id': c.id,
+                'document_version_id': c.document_version_id,
+                'version_number': c.document_version.version_number,
+                'status': c.status,
+                'created_at': c.created_at,
+                'comment_type': c.comment_type.code,
+                'section_reference': c.section_reference,
+                'line_start': c.line_start,
+                'line_end': c.line_end,
+                'range_hash': c.range_hash,
+                'label': f"{c.comment_type.code} on v{c.document_version.version_number}"
+            })
+        # Merge and sort by date where available: use created_at/status_date
+        events = []
+        for e in version_events:
+            events.append({**e, 'date': e.get('status_date')})
+        for e in comment_events:
+            events.append({**e, 'date': e.get('created_at')})
+        events.sort(key=lambda x: x.get('date') or timezone.now())
+        return Response({'publication_id': publication.id, 'events': events})
+
+    @action(detail=True, methods=['get'])
+    def diff(self, request, pk=None):
+        """
+        Compute a markup-aware diff between two versions of this publication.
+        Query params: from (int), to (int) version numbers.
+        Returns a JSON with 'from', 'to', and 'html' containing spans with classes diff-add/diff-del.
+        """
+        publication = self.get_object()
+        try:
+            v_from = int(request.query_params.get('from'))
+            v_to = int(request.query_params.get('to'))
+        except (TypeError, ValueError):
+            return Response({'detail': "Query params 'from' and 'to' (version numbers) are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        dv_from = publication.document_versions.filter(version_number=v_from).first()
+        dv_to = publication.document_versions.filter(version_number=v_to).first()
+        if not dv_from or not dv_to:
+            return Response({'detail': 'One or both versions not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Build JATS XML for both versions
+        try:
+            jats_from = JATSConverter.document_to_jats(dv_from)
+            jats_to = JATSConverter.document_to_jats(dv_to)
+        except Exception as e:
+            return Response({'detail': f'Error generating JATS: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Tokenize preserving tags to keep markup awareness
+        import re
+        def tokenize(xml: str):
+            # Separate tags and text; split text on whitespace
+            parts = re.split(r'(</?[^>]+>)', xml)
+            tokens = []
+            for p in parts:
+                if not p:
+                    continue
+                if p.startswith('<') and p.endswith('>'):
+                    tokens.append(p)
+                else:
+                    for t in re.split(r'(\s+)', p):
+                        if t:
+                            tokens.append(t)
+            return tokens
+
+        a = tokenize(jats_from)
+        b = tokenize(jats_to)
+
+        from difflib import SequenceMatcher
+        sm = SequenceMatcher(a=a, b=b, autojunk=False)
+        out = []
+        for tag, i1, i2, j1, j2 in sm.get_opcodes():
+            if tag == 'equal':
+                out.extend(b[j1:j2])
+            elif tag == 'insert':
+                out.append('<span class="diff-add">')
+                out.extend(b[j1:j2])
+                out.append('</span>')
+            elif tag == 'delete':
+                out.append('<span class="diff-del">')
+                out.extend(a[i1:i2])
+                out.append('</span>')
+            elif tag == 'replace':
+                out.append('<span class="diff-del">')
+                out.extend(a[i1:i2])
+                out.append('</span>')
+                out.append('<span class="diff-add">')
+                out.extend(b[j1:j2])
+                out.append('</span>')
+        # Merge tokens back to string, collapsing spaces properly
+        html = ''.join(out)
+        return Response({'publication_id': publication.id, 'from': v_from, 'to': v_to, 'html': html})
+
 
 class DocumentVersionViewSet(viewsets.ModelViewSet):
     """

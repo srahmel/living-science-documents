@@ -190,6 +190,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         document_version_id = serializer.validated_data.get('document_version').id
         from publications.models import DocumentVersion
         from rest_framework.exceptions import ValidationError
+        import hashlib
 
         try:
             document_version = DocumentVersion.objects.get(id=document_version_id)
@@ -226,6 +227,15 @@ class CommentViewSet(viewsets.ModelViewSet):
                 ).distinct().count()
                 if human_count >= 2:
                     raise ValidationError('Comment limit reached: max 2 per section per day per user.')
+
+        # Compute a stable range_hash if not provided: includes doc, section, line range, and referenced_text context
+        if not data.get('range_hash'):
+            ref_text = (data.get('referenced_text') or '').strip()
+            line_start = data.get('line_start') or 0
+            line_end = data.get('line_end') or 0
+            section_id = section or ''
+            base = f"dv:{dv.id}|sec:{section_id}|ls:{line_start}|le:{line_end}|ctx:{ref_text}"
+            data['range_hash'] = hashlib.sha256(base.encode('utf-8')).hexdigest()[:64]
 
         comment = serializer.save(status='draft')
 

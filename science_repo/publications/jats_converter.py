@@ -340,43 +340,38 @@ class JATSConverter:
             # Body
             body = etree.SubElement(root, "body")
 
+            # Stable sequential section IDs S1..Sn
+            sec_counter = 0
+            def _add_sec(body_parent, sec_type, title_text, paragraph_text=None):
+                nonlocal sec_counter
+                sec_counter += 1
+                sec_el = etree.SubElement(body_parent, "sec", attrib={"sec-type": sec_type, "id": f"S{sec_counter}"})
+                title_el = etree.SubElement(sec_el, "title")
+                title_el.text = title_text
+                if paragraph_text:
+                    p = etree.SubElement(sec_el, "p")
+                    p.text = paragraph_text
+                return sec_el
+
             # Introduction
             if document_version.introduction:
-                sec = etree.SubElement(body, "sec", attrib={"sec-type": "intro"})
-                title = etree.SubElement(sec, "title")
-                title.text = "Introduction"
-                p = etree.SubElement(sec, "p")
-                p.text = document_version.introduction
+                _add_sec(body, "intro", "Introduction", document_version.introduction)
 
             # Methodology
             if document_version.methodology:
-                sec = etree.SubElement(body, "sec", attrib={"sec-type": "methods"})
-                title = etree.SubElement(sec, "title")
-                title.text = "Methodology"
-                p = etree.SubElement(sec, "p")
-                p.text = document_version.methodology
+                _add_sec(body, "methods", "Methodology", document_version.methodology)
 
             # Main text
             if document_version.main_text:
-                sec = etree.SubElement(body, "sec", attrib={"sec-type": "results"})
-                title = etree.SubElement(sec, "title")
-                title.text = "Results"
-                p = etree.SubElement(sec, "p")
-                p.text = document_version.main_text
+                _add_sec(body, "results", "Results", document_version.main_text)
 
             # Conclusion
             if document_version.conclusion:
-                sec = etree.SubElement(body, "sec", attrib={"sec-type": "conclusion"})
-                title = etree.SubElement(sec, "title")
-                title.text = "Conclusion"
-                p = etree.SubElement(sec, "p")
-                p.text = document_version.conclusion
+                _add_sec(body, "conclusion", "Conclusion", document_version.conclusion)
 
             # Figures
             if hasattr(document_version, 'figures') and document_version.figures.exists():
-                figs_sec = etree.SubElement(body, "sec", attrib={"sec-type": "figures"})
-                title = etree.SubElement(figs_sec, "title")
-                title.text = "Figures"
+                figs_sec = _add_sec(body, "figures", "Figures")
                 for fig_obj in document_version.figures.all().order_by('figure_number'):
                     fig_el = etree.SubElement(figs_sec, "fig", attrib={"id": f"fig{fig_obj.figure_number}"})
                     # Caption
