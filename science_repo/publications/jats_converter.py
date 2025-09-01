@@ -145,17 +145,44 @@ class JATSConverter:
     def _process_section(sec, html):
         """Process a section element."""
         # Get the section title
-        title = sec.find('.//title')
+        title = sec.find('title')
         if title is not None and title.text:
             html.write(f'<h2 class="section-title">{title.text}</h2>')
 
-        # Process paragraphs
-        for p in sec.findall('.//p'):
+        # Process paragraphs (only direct children to avoid duplication)
+        for p in sec.findall('p'):
             if p.text:
                 html.write(f'<p>{p.text}</p>')
 
-        # Process subsections recursively
-        for subsec in sec.findall('.//sec'):
+        # Process figures
+        for fig in sec.findall('fig'):
+            html.write('<figure>')
+            # Graphic
+            graphic = fig.find('graphic')
+            href = None
+            if graphic is not None:
+                href = graphic.get('{http://www.w3.org/1999/xlink}href') or graphic.get('xlink:href')
+            # Alt text
+            alt = ''
+            alt_el = fig.find('alt-text')
+            if alt_el is not None and alt_el.text:
+                alt = alt_el.text
+            if href:
+                html.write(f'<img src="{href}" alt="{alt}">')
+            # Caption
+            caption = fig.find('caption')
+            if caption is not None:
+                # Collect all <p> text inside caption
+                caption_texts = []
+                for cp in caption.findall('.//p'):
+                    if cp.text:
+                        caption_texts.append(cp.text)
+                if caption_texts:
+                    html.write(f'<figcaption>{" ".join(caption_texts)}</figcaption>')
+            html.write('</figure>')
+
+        # Process subsections recursively (only direct nested sec)
+        for subsec in sec.findall('sec'):
             JATSConverter._process_section(subsec, html)
 
     @staticmethod

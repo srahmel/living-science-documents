@@ -18,7 +18,7 @@ The JATS-XML export includes:
 
 ### PDF
 
-PDF export creates a PDF/A document from a document version, optionally including comments.
+PDF export creates a PDF document. If WeasyPrint is available at runtime, the system emits PDF/A-2b by rendering JATS→HTML with a dedicated stylesheet (publications/static/pdf/pdf.css). Otherwise, it falls back to ReportLab (not strict PDF/A). Ensure a fully embeddable Unicode font is available (e.g., DejaVu Sans) for PDF/A conformance.
 
 ## API Endpoints
 
@@ -104,7 +104,9 @@ Many institutional repositories accept JATS-XML format for submission. The speci
 
 ## JATS-XML Format Details
 
-The JATS-XML export follows the JATS 1.3 DTD standard and includes the following elements:
+The JATS-XML export follows a minimal JATS 1.3 subset tailored for MVP. See publications/JATS_MAPPING.md and publications/schemas/lsd-jats-minimal.xsd. A schema validation utility validates exports in tests.
+
+It includes the following elements:
 
 - `<article>`: Root element
 - `<front>`: Front matter (metadata)

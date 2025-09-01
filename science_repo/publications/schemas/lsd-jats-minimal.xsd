@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Minimal JATS subset schema for LSD MVP: supports article/front/article-meta, body with sec/p/fig(graphic,caption,alt-text), back with ref-list/mixed-citation. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:xlink="http://www.w3.org/1999/xlink"
+           xmlns:xml="http://www.w3.org/XML/1998/namespace"
+           elementFormDefault="qualified"
+           attributeFormDefault="unqualified">
+
+  <!-- Root article -->
+  <xs:element name="article">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="front" type="FrontType"/>
+        <xs:element name="body" type="BodyType" minOccurs="0"/>
+        <xs:element name="back" type="BackType" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="article-type" type="xs:string" use="optional"/>
+      <xs:attribute name="dtd-version" type="xs:string" use="optional"/>
+      <xs:attribute ref="xml:lang" use="optional"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Front -->
+  <xs:complexType name="FrontType">
+    <xs:sequence>
+      <xs:element name="journal-meta" type="JournalMetaType" minOccurs="0"/>
+      <xs:element name="article-meta" type="ArticleMetaType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="JournalMetaType">
+    <xs:sequence>
+      <xs:element name="journal-id" minOccurs="0">
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:string">
+              <xs:attribute name="journal-id-type" type="xs:string" use="optional"/>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="journal-title-group" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="journal-title" type="xs:string"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="issn" minOccurs="0">
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:string">
+              <xs:attribute name="pub-type" type="xs:string" use="optional"/>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="publisher" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="publisher-name" type="xs:string"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ArticleMetaType">
+    <xs:sequence>
+      <xs:element name="article-id" minOccurs="0">
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:string">
+              <xs:attribute name="pub-id-type" type="xs:string" use="optional"/>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="article-categories" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="subj-group" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="subject" type="xs:string" maxOccurs="unbounded"/>
+                </xs:sequence>
+                <xs:attribute name="subj-group-type" type="xs:string" use="optional"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="title-group">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="article-title" type="xs:string"/>
+            <xs:element name="alt-title" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <xs:attribute name="alt-title-type" type="xs:string" use="optional"/>
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="contrib-group" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="contrib" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="name" minOccurs="0">
+                    <xs:complexType>
+                      <xs:sequence>
+                        <xs:element name="given-names" type="xs:string" minOccurs="0"/>
+                        <xs:element name="surname" type="xs:string"/>
+                      </xs:sequence>
+                    </xs:complexType>
+                  </xs:element>
+                  <xs:element name="contrib-id" minOccurs="0">
+                    <xs:complexType>
+                      <xs:simpleContent>
+                        <xs:extension base="xs:string">
+                          <xs:attribute name="contrib-id-type" type="xs:string" use="optional"/>
+                        </xs:extension>
+                      </xs:simpleContent>
+                    </xs:complexType>
+                  </xs:element>
+                  <xs:element name="aff" minOccurs="0">
+                    <xs:complexType>
+                      <xs:sequence>
+                        <xs:element name="institution" type="xs:string" minOccurs="0"/>
+                        <xs:element name="addr-line" type="xs:string" minOccurs="0"/>
+                      </xs:sequence>
+                    </xs:complexType>
+                  </xs:element>
+                  <xs:element name="xref" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="contrib-type" type="xs:string" use="optional"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="pub-date" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="day" type="xs:string"/>
+            <xs:element name="month" type="xs:string"/>
+            <xs:element name="year" type="xs:string"/>
+          </xs:sequence>
+          <xs:attribute name="pub-type" type="xs:string" use="optional"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="version" type="xs:string" minOccurs="0"/>
+      <xs:element name="abstract" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="p" type="xs:string" maxOccurs="unbounded"/>
+          </xs:sequence>
+          <xs:attribute name="abstract-type" type="xs:string" use="optional"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="funding-group" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="funding-statement" type="xs:string"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Body / Sections / Figures -->
+  <xs:complexType name="BodyType">
+    <xs:sequence>
+      <xs:element name="sec" type="SecType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="SecType">
+    <xs:sequence>
+      <xs:element name="title" type="xs:string" minOccurs="0"/>
+      <xs:element name="p" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="fig" type="FigType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="sec" type="SecType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="sec-type" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="FigType">
+    <xs:sequence>
+      <xs:element name="caption" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="p" type="xs:string" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="alt-text" type="xs:string" minOccurs="0"/>
+      <xs:element name="graphic" minOccurs="0">
+        <xs:complexType>
+          <xs:attribute ref="xlink:href" use="optional"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:ID" use="optional"/>
+    <!-- allow custom data-* attributes -->
+    <xs:anyAttribute processContents="lax"/>
+  </xs:complexType>
+
+  <!-- Back / References -->
+  <xs:complexType name="BackType">
+    <xs:sequence>
+      <xs:element name="ack" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="title" type="xs:string" minOccurs="0"/>
+            <xs:element name="p" type="xs:string" maxOccurs="unbounded" minOccurs="0"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="sec" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="ref-list" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="title" type="xs:string" minOccurs="0"/>
+            <xs:element name="ref" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="mixed-citation" type="xs:string" minOccurs="0"/>
+                </xs:sequence>
+                <xs:attribute name="id" type="xs:ID" use="optional"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

@@ -36,7 +36,39 @@ class ArchiveService:
             BytesIO: The PDF document as a BytesIO object
         """
         from comments.models import Comment
+        from .jats_converter import JATSConverter
         
+        # Prefer WeasyPrint to produce PDF/A if available
+        try:
+            from weasyprint import HTML, CSS
+            weasy_available = True
+        except Exception:
+            weasy_available = False
+        
+        if weasy_available:
+            # Convert to JATS-HTML and render with CSS
+            jats_xml = JATSConverter.document_to_jats(document_version)
+            html_str = JATSConverter.jats_to_html(jats_xml)
+            # Optionally append comments as a section
+            if include_comments:
+                from django.utils.html import escape
+                from comments.models import Comment as Cmt
+                comments = Cmt.objects.filter(document_version=document_version, status='published').select_related('comment_type').prefetch_related('authors')
+                if comments.exists():
+                    html_str += '<h1>Comments</h1>'
+                    for c in comments:
+                        authors = ', '.join([a.user.get_full_name() for a in c.authors.all()])
+                        html_str += f"<h3>{escape(c.comment_type.name)} by {escape(authors)}</h3>"
+                        if c.doi:
+                            html_str += f"<p>DOI: {escape(c.doi)}</p>"
+                        html_str += f"<p>{escape(c.content)}</p>"
+            css_path = os.path.join(os.path.dirname(__file__), 'static', 'pdf', 'pdf.css')
+            html = HTML(string=html_str, base_url=os.getcwd())
+            css = CSS(filename=css_path)
+            pdf_bytes = html.write_pdf(stylesheets=[css], presentational_hints=True, optimize_size=('images',), pdf_version='1.7', pdfa='2b')
+            return BytesIO(pdf_bytes)
+        
+        # Fallback to ReportLab (not strict PDF/A)
         # Create a BytesIO object to store the PDF
         buffer = BytesIO()
         
@@ -65,34 +97,40 @@ class ArchiveService:
         elements.append(Spacer(1, 12))
         
         # Add technical abstract
-        elements.append(Paragraph("Technical Abstract", styles['Heading2']))
-        elements.append(Paragraph(document_version.technical_abstract, styles['Normal']))
-        elements.append(Spacer(1, 12))
+        if document_version.technical_abstract:
+            elements.append(Paragraph("Technical Abstract", styles['Heading2']))
+            elements.append(Paragraph(document_version.technical_abstract, styles['Normal']))
+            elements.append(Spacer(1, 12))
         
         # Add introduction
-        elements.append(Paragraph("Introduction", styles['Heading2']))
-        elements.append(Paragraph(document_version.introduction, styles['Normal']))
-        elements.append(Spacer(1, 12))
+        if document_version.introduction:
+            elements.append(Paragraph("Introduction", styles['Heading2']))
+            elements.append(Paragraph(document_version.introduction, styles['Normal']))
+            elements.append(Spacer(1, 12))
         
         # Add methodology
-        elements.append(Paragraph("Methodology", styles['Heading2']))
-        elements.append(Paragraph(document_version.methodology, styles['Normal']))
-        elements.append(Spacer(1, 12))
+        if document_version.methodology:
+            elements.append(Paragraph("Methodology", styles['Heading2']))
+            elements.append(Paragraph(document_version.methodology, styles['Normal']))
+            elements.append(Spacer(1, 12))
         
         # Add main text
-        elements.append(Paragraph("Main Text", styles['Heading2']))
-        elements.append(Paragraph(document_version.main_text, styles['Normal']))
-        elements.append(Spacer(1, 12))
+        if document_version.main_text:
+            elements.append(Paragraph("Main Text", styles['Heading2']))
+            elements.append(Paragraph(document_version.main_text, styles['Normal']))
+            elements.append(Spacer(1, 12))
         
         # Add conclusion
-        elements.append(Paragraph("Conclusion", styles['Heading2']))
-        elements.append(Paragraph(document_version.conclusion, styles['Normal']))
-        elements.append(Spacer(1, 12))
+        if document_version.conclusion:
+            elements.append(Paragraph("Conclusion", styles['Heading2']))
+            elements.append(Paragraph(document_version.conclusion, styles['Normal']))
+            elements.append(Spacer(1, 12))
         
         # Add author contributions
-        elements.append(Paragraph("Author Contributions", styles['Heading2']))
-        elements.append(Paragraph(document_version.author_contributions, styles['Normal']))
-        elements.append(Spacer(1, 12))
+        if document_version.author_contributions:
+            elements.append(Paragraph("Author Contributions", styles['Heading2']))
+            elements.append(Paragraph(document_version.author_contributions, styles['Normal']))
+            elements.append(Spacer(1, 12))
         
         # Add conflicts of interest
         if document_version.conflicts_of_interest:
@@ -113,9 +151,10 @@ class ArchiveService:
             elements.append(Spacer(1, 12))
         
         # Add references
-        elements.append(Paragraph("References", styles['Heading2']))
-        elements.append(Paragraph(document_version.references, styles['Normal']))
-        elements.append(Spacer(1, 12))
+        if document_version.references:
+            elements.append(Paragraph("References", styles['Heading2']))
+            elements.append(Paragraph(document_version.references, styles['Normal']))
+            elements.append(Spacer(1, 12))
         
         # Add comments
         if include_comments:
