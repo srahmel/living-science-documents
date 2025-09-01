@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import transaction
+from django.contrib.auth.models import Group
 import random
 import uuid
 from datetime import timedelta
@@ -48,11 +49,14 @@ class Command(BaseCommand):
     def seed_data(self):
         """Seed the database with sample data"""
         with transaction.atomic():
+            # Ensure role groups exist
+            self.create_groups()
             # Create comment types if they don't exist
             self.create_comment_types()
 
             # Create users with different roles
             users = self.create_users()
+            self.assign_roles(users)
 
             # Create publications with document versions
             publications = self.create_publications(users)
@@ -61,6 +65,13 @@ class Command(BaseCommand):
             self.create_comments(users, publications)
 
             self.stdout.write(self.style.SUCCESS('Successfully seeded database with sample data'))
+
+    def create_groups(self):
+        self.stdout.write('Ensuring role groups exist...')
+        for name in [
+            'readers', 'commentators', 'authors', 'moderators', 'review_editors', 'editorial_office', 'admins'
+        ]:
+            Group.objects.get_or_create(name=name)
 
     def create_comment_types(self):
         """Create comment types based on the guidelines"""
@@ -223,6 +234,24 @@ class Command(BaseCommand):
             users.append(user)
 
         return users
+
+    def assign_roles(self, users):
+        self.stdout.write('Assigning roles to users...')
+        # users indices based on creation order in create_users()
+        author1, author2 = users[0], users[1]
+        commentator1, commentator2 = users[2], users[3]
+        moderator = users[4]
+        review_editor = users[5]
+        editorial_office = users[6]
+
+        groups = {g.name: g for g in Group.objects.all()}
+        author1.groups.add(groups['authors'], groups['commentators'])
+        author2.groups.add(groups['authors'])
+        commentator1.groups.add(groups['commentators'])
+        commentator2.groups.add(groups['commentators'])
+        moderator.groups.add(groups['moderators'])
+        review_editor.groups.add(groups['review_editors'], groups['moderators'])
+        editorial_office.groups.add(groups['editorial_office'])
 
     def create_publications(self, users):
         """Create publications with document versions"""

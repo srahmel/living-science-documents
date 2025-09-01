@@ -20,6 +20,25 @@ class User(AbstractUser):
         return self.get_full_name() or self.username
 
 
+# 🧾 Audit Log for RBAC and critical changes
+class AuditLog(models.Model):
+    actor = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_actions')
+    action = models.CharField(max_length=255)
+    target_model = models.CharField(max_length=255)
+    target_id = models.CharField(max_length=64)
+    before_data = models.JSONField(null=True, blank=True)
+    after_data = models.JSONField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.created_at} {self.action} {self.target_model}:{self.target_id} by {self.actor_id}"
+
+
 # 📚 Publikation (übergreifende Klammer)
 class Publication(models.Model):
     meta_doi = models.CharField(max_length=200, unique=True, null=True, blank=True)

@@ -14,7 +14,9 @@ urlpatterns = [
     # Use the new public CSRF token view that explicitly bypasses authentication
     path('csrf/', views.PublicCSRFTokenView.as_view(), name='csrf_token'),
     path('logout/', views.logout_view, name='logout'),
+    path('roles/', views.RoleManagementView.as_view(), name='role-management'),
     path('orcid/login/', views.orcid_login, name='orcid_login'),
+    path('audits/', views.AuditLogListView.as_view(), name='audit-list'),
     path('orcid/callback/', views.orcid_callback, name='orcid_callback'),
     # Password reset endpoints
     path('password-reset/', views.password_reset_request, name='password-reset'),

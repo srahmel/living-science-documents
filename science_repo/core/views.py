@@ -3,6 +3,8 @@ from django.conf import settings
 from rest_framework import status, viewsets, generics, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from django.contrib.auth.models import Group
+from .models import AuditLog
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.response import Response
@@ -85,6 +87,17 @@ def login_view(request):
     return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class IsAdminOrEditorialOffice(permissions.BasePermission):
+    """Allow only is_superuser or members of 'editorial_office' group."""
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        return user.groups.filter(name='editorial_office').exists()
+
+
 class UserViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing users.
@@ -117,10 +130,108 @@ class UserViewSet(viewsets.ModelViewSet):
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
 
+
+class RoleManagementView(generics.GenericAPIView):
+    permission_classes = [IsAdminOrEditorialOffice]
+
+    @swagger_auto_schema(
+        operation_description="List available roles (groups) and a user's current roles.",
+        manual_parameters=[
+            openapi.Parameter('user_id', openapi.IN_QUERY, description='User ID to fetch roles for', type=openapi.TYPE_INTEGER, required=False)
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        user_id = request.GET.get('user_id')
+        roles = list(Group.objects.values_list('name', flat=True))
+        current = []
+        if user_id:
+            try:
+                u = get_user_model().objects.get(id=user_id)
+                current = list(u.groups.values_list('name', flat=True))
+            except get_user_model().DoesNotExist:
+                return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'roles': roles, 'current': current})
+
+    @swagger_auto_schema(
+        operation_description="Assign or remove a role (group) to/from a user. Audited.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['user_id', 'role', 'action'],
+            properties={
+                'user_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                'role': openapi.Schema(type=openapi.TYPE_STRING, description='Group name'),
+                'action': openapi.Schema(type=openapi.TYPE_STRING, enum=['add', 'remove'])
+            }
+        )
+    )
+    def post(self, request, *args, **kwargs):
+        user_id = request.data.get('user_id')
+        role = request.data.get('role')
+        action = request.data.get('action')
+        if not user_id or not role or action not in ['add', 'remove']:
+            return Response({'detail': 'Invalid payload'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            target_user = get_user_model().objects.get(id=user_id)
+        except get_user_model().DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            group = Group.objects.get(name=role)
+        except Group.DoesNotExist:
+            return Response({'detail': 'Role not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        before = list(target_user.groups.values_list('name', flat=True))
+        if action == 'add':
+            target_user.groups.add(group)
+            act = 'role_add'
+        else:
+            target_user.groups.remove(group)
+            act = 'role_remove'
+        after = list(target_user.groups.values_list('name', flat=True))
+
+        # Audit log entry
+        AuditLog.objects.create(
+            actor=request.user if request.user.is_authenticated else None,
+            action=act,
+            target_model='core.User',
+            target_id=str(target_user.id),
+            before_data={'groups': before},
+            after_data={'groups': after},
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT')
+        )
+        return Response({'detail': 'ok', 'before': before, 'after': after})
+
     def get_object(self):
         if self.kwargs.get('pk') == 'me':
             return self.request.user
         return super().get_object()
+
+
+class AuditLogListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = None  # use bare dicts
+
+    @swagger_auto_schema(
+        operation_description="List audit log entries (admin only)."
+    )
+    def get(self, request, *args, **kwargs):
+        logs = AuditLog.objects.all()[:200]
+        data = [
+            {
+                'id': log.id,
+                'created_at': log.created_at,
+                'actor': log.actor_id,
+                'action': log.action,
+                'target_model': log.target_model,
+                'target_id': log.target_id,
+                'before_data': log.before_data,
+                'after_data': log.after_data,
+                'ip_address': log.ip_address,
+                'user_agent': log.user_agent,
+            }
+            for log in logs
+        ]
+        return Response({'results': data})
 
 
 
