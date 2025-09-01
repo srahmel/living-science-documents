@@ -37,7 +37,7 @@ class CommentModerationSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommentModeration
         fields = ['id', 'comment', 'moderator', 'moderation_date', 'decision', 
-                  'decision_reason', 'moderator_details']
+                  'decision_reason', 'moderator_details', 'checked_question_form', 'checked_sources', 'checked_anchor']
         read_only_fields = ['id', 'moderation_date']
 
     def get_moderator_details(self, obj):
@@ -82,7 +82,7 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['id', 'document_version', 'parent_comment', 'comment_type', 'content',
-                  'referenced_text', 'section_reference', 'line_start', 'line_end', 'doi',
+                  'referenced_text', 'section_reference', 'line_start', 'line_end', 'range_hash', 'doi',
                   'status', 'created_at', 'updated_at', 'status_date', 'status_user',
                   'is_ai_generated', 'authors', 'references', 'conflict_of_interest',
                   'moderation', 'comment_type_details', 'document_version_details',
@@ -222,20 +222,14 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """
-        Validate that AI-generated comments of type SC or rSC are in question form.
-        Human-generated comments can be more flexible.
+        Enforce question-form for all comments. Type-specific logic can extend here.
         """
-        if 'content' in data and 'comment_type' in data:
-            comment_type = data['comment_type']
+        if 'content' in data:
             content = data['content'].strip()
-            is_ai_generated = data.get('is_ai_generated', False)
-
-            # Check if AI-generated SC or rSC comment is in question form
-            if comment_type.code in ['SC', 'rSC'] and is_ai_generated and not content.endswith('?'):
+            if not content.endswith('?'):
                 raise serializers.ValidationError(
-                    f"AI-generated {comment_type.code} comments must be in question form (end with '?')"
+                    "All comments must be in question form (end with '?')"
                 )
-
         return data
 
 
@@ -244,13 +238,14 @@ class CommentListSerializer(serializers.ModelSerializer):
     comment_type_code = serializers.SerializerMethodField()
     author_count = serializers.SerializerMethodField()
     authors = serializers.SerializerMethodField()
+    visual_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
         fields = ['id', 'document_version', 'comment_type_code', 'content', 'doi',
                   'status', 'created_at', 'is_ai_generated', 'author_count', 'authors',
-                  'referenced_text', 'section_reference', 'line_start', 'line_end',
-                  ]
+                  'referenced_text', 'section_reference', 'line_start', 'line_end', 'range_hash',
+                  'visual_code']
         read_only_fields = ['id', 'created_at', 'doi']
 
     def get_comment_type_code(self, obj):
@@ -268,6 +263,16 @@ class CommentListSerializer(serializers.ModelSerializer):
             }
             for author in obj.authors.all()
         ]
+
+    def get_visual_code(self, obj):
+        # Visual code mapping: green/hellgrün/blau/hellblau/grau (EN: green/lightgreen/blue/lightblue/gray)
+        if obj.status == 'rejected':
+            return 'gray'
+        if obj.status in ['draft', 'under_review']:
+            return 'lightblue' if obj.is_ai_generated else 'blue'
+        if obj.status == 'accepted':
+            return 'lightgreen' if obj.is_ai_generated else 'green'
+        return 'blue'
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):

@@ -6,16 +6,16 @@ Endpoint
 - Auth: required (author of the document)
 
 Form fields
-- file (required): image file (png, jpeg, webp, gif)
+- file (required): image file (png, jpeg, webp, svg)
 - document_version (optional, int): ID to associate the attachment
 - title (optional): default = filename
 - description (optional)
 
 Validation & processing
-- MIME whitelist: image/png, image/jpeg, image/webp, image/gif
+- MIME whitelist: image/png, image/jpeg, image/webp, image/svg+xml
 - Size limit: MAX_UPLOAD_IMAGE_SIZE_MB (default 15 MB)
-- ClamAV: optional network scan if CLAMAV_HOST and CLAMAV_PORT are configured
-- EXIF: removed by re-encoding via Pillow (JPEG/PNG/WEBP supported; GIF passthrough)
+- ClamAV: REQUIRED (network scan via clamd INSTREAM). If CLAMAV_HOST/PORT not configured: 503 Service Unavailable.
+- EXIF: removed by re-encoding via Pillow (JPEG/PNG/WEBP supported; SVG passthrough). Orientation normalized; ICC preserved.
 
 Response 201 JSON
 {
@@ -27,7 +27,9 @@ Response 201 JSON
   "height": 800,
   "checksum_sha256": "...",
   "exif_removed": true,
-  "clamav_status": "clean|skipped|error"
+  "w": 1200,
+  "h": 800,
+  "hash": "..."
 }
 
 Follow-up (optional)
@@ -109,3 +111,74 @@ export function makePasteHandler(editor: Editor, documentVersionId?: number) {
   }
 }
 ```
+
+
+## OpenAPI Sketch (YAML)
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Assets Upload
+  version: '1.0'
+paths:
+  /api/publications/attachments/upload-image/:
+    post:
+      summary: Upload image from paste/drop
+      description: |
+        Uploads an image, performs mandatory ClamAV scan, strips EXIF (except SVG),
+        and stores the file. Returns final URL and metadata. Requires authentication.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file (png, jpeg, webp, svg)
+                document_version:
+                  type: integer
+                  nullable: true
+                title:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  url: { type: string, format: uri }
+                  mime: { type: string, enum: [image/png, image/jpeg, image/webp, image/svg+xml] }
+                  size: { type: integer }
+                  width: { type: integer, nullable: true }
+                  height: { type: integer, nullable: true }
+                  w: { type: integer, nullable: true }
+                  h: { type: integer, nullable: true }
+                  checksum_sha256: { type: string }
+                  hash: { type: string }
+                  exif_removed: { type: boolean }
+        '400':
+          description: Bad Request (validation error)
+        '503':
+          description: Service Unavailable (ClamAV not configured or scan failed)
+      security:
+        - cookieAuth: []
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+```
+
+Notes:
+- Alt-text is mandatory when creating Figures via /api/publications/figures/ (server-side validation).
+- Figure attributes to use in the editor node: {src,url,width,height,hash,caption,alt,license,source,attribution}.

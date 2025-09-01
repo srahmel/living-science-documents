@@ -97,8 +97,8 @@ WSGI_APPLICATION = 'science_repo.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Use SQLite during tests to avoid external DB dependency and to share state across threads
-if 'test' in sys.argv:
+# Use SQLite during tests (pytest) to avoid external DB dependency and to share state across threads
+if ('PYTEST_CURRENT_TEST' in os.environ) or any('pytest' in arg for arg in sys.argv) or ('test' in sys.argv):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -229,6 +229,16 @@ DOI_CROSSREF_URL = config('DOI_CROSSREF_URL', default='https://api.crossref.org'
 DOI_CROSSREF_USERNAME = config('DOI_CROSSREF_USERNAME', default='')
 DOI_CROSSREF_PASSWORD = config('DOI_CROSSREF_PASSWORD', default='')
 DOI_AUTO_GENERATE = config('DOI_AUTO_GENERATE', default=True, cast=bool)
+
+# DataCite Fabrica (sandbox) settings used by core.doi.DOIService
+DATACITE_ENABLED = config('DATACITE_ENABLED', default=False, cast=bool)
+DATACITE_BASE_URL = config('DATACITE_BASE_URL', default='https://api.test.datacite.org')
+DATACITE_SANDBOX_CLIENT_ID = config('DATACITE_SANDBOX_CLIENT_ID', default='')
+DATACITE_SANDBOX_CLIENT_SECRET = config('DATACITE_SANDBOX_CLIENT_SECRET', default='')
+DATACITE_CLIENT_ID = config('DATACITE_CLIENT_ID', default='')
+DATACITE_CLIENT_SECRET = config('DATACITE_CLIENT_SECRET', default='')
+DATACITE_PREFIX = config('DATACITE_PREFIX', default=DOI_PREFIX)
+DATACITE_PUBLISHER = config('DATACITE_PUBLISHER', default='Leopoldina – Nationale Akademie der Wissenschaften')
 
 # Email settings
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')

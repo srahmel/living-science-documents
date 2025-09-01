@@ -31,6 +31,21 @@ class FigureSerializer(serializers.ModelSerializer):
         fields = ['id', 'document_version', 'figure_number', 'title', 'caption', 'alt_text', 'license', 'source', 'attribution', 'image', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def validate(self, data):
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        method = getattr(request, 'method', None)
+        # On create require alt_text
+        if method == 'POST':
+            alt = data.get('alt_text')
+            if not alt or not str(alt).strip():
+                raise serializers.ValidationError({'alt_text': 'Alt-text is required for accessibility.'})
+        # On update, if alt_text provided, ensure non-empty
+        if 'alt_text' in data:
+            alt = data.get('alt_text')
+            if not alt or not str(alt).strip():
+                raise serializers.ValidationError({'alt_text': 'Alt-text cannot be empty.'})
+        return data
+
 
 class TableSerializer(serializers.ModelSerializer):
     """Serializer for the Table model"""
@@ -109,13 +124,13 @@ class DocumentVersionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DocumentVersion
-        fields = ['id', 'publication', 'version_number', 'doi', 'content', 'technical_abstract',
+        fields = ['id', 'publication', 'version_number', 'doi', 'doi_status', 'content', 'technical_abstract',
                   'non_technical_abstract', 'introduction', 'methodology', 'main_text', 'conclusion',
                   'author_contributions', 'conflicts_of_interest', 'acknowledgments', 'funding',
                   'references', 'reviewer_response', 'metadata', 'release_date', 'status', 'status_date', 'status_user',
                   'authors', 'figures', 'tables', 'keywords', 'attachments', 'review_process',
                   'status_user_details']
-        read_only_fields = ['id', 'doi', 'status_date', 'publication', 'version_number']
+        read_only_fields = ['id', 'doi', 'doi_status', 'status_date', 'publication', 'version_number']
 
     def get_status_user_details(self, obj):
         if obj.status_user:
@@ -131,9 +146,9 @@ class DocumentVersionListSerializer(serializers.ModelSerializer):
     """Simplified serializer for listing document versions"""
     class Meta:
         model = DocumentVersion
-        fields = ['id', 'publication', 'version_number', 'doi', 'technical_abstract', 
+        fields = ['id', 'publication', 'version_number', 'doi', 'doi_status', 'technical_abstract', 
                   'release_date', 'status', 'status_date']
-        read_only_fields = ['id', 'doi', 'status_date']
+        read_only_fields = ['id', 'doi', 'doi_status', 'status_date']
 
 
 class PublicationSerializer(serializers.ModelSerializer):

@@ -143,9 +143,20 @@ class CommentViewSet(viewsets.ModelViewSet):
             return CommentListSerializer
         return CommentSerializer
 
+    def create(self, request, *args, **kwargs):
+        # Accept some legacy/unknown fields from clients and ignore them
+        mutable_data = request.data.copy()
+        for k in ['line_number', 'text_selection', 'doi_requested', 'comment_type_label']:
+            mutable_data.pop(k, None)
+        serializer = self.get_serializer(data=mutable_data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     def get_queryset(self):
         """
-        Optionally filter comments by document_version, comment_type, or parent_comment.
+        Optionally filter comments by document_version, comment_type, parent_comment, status, and section.
         """
         queryset = Comment.objects.all()
 
@@ -168,6 +179,10 @@ class CommentViewSet(viewsets.ModelViewSet):
         if status_param is not None:
             queryset = queryset.filter(status=status_param)
 
+        section = self.request.query_params.get('section', None)
+        if section is not None:
+            queryset = queryset.filter(section_reference=section)
+
         return queryset
 
     def perform_create(self, serializer):
@@ -183,6 +198,35 @@ class CommentViewSet(viewsets.ModelViewSet):
         except DocumentVersion.DoesNotExist:
             raise ValidationError("Document version not found.")
 
+        # Enforce limits and rSC RBAC before saving
+        from rest_framework.exceptions import ValidationError
+        data = serializer.validated_data
+        dv = data.get('document_version')
+        is_ai = data.get('is_ai_generated', False)
+        section = data.get('section_reference')
+        # rSC only for document authors
+        if data.get('comment_type') and getattr(data.get('comment_type'), 'code', None) == 'rSC':
+            from publications.models import Author as DocAuthor
+            if not DocAuthor.objects.filter(document_version=dv, user=self.request.user).exists():
+                raise ValidationError('Only document authors can create rSC (Response to Scientific Comment).')
+        # AI limit per document version
+        if is_ai:
+            ai_count = Comment.objects.filter(document_version=dv, is_ai_generated=True).count()
+            if ai_count >= 10:
+                raise ValidationError('AI comment limit reached (max 10 per document).')
+        else:
+            # Human limit per section/day/user
+            if section:
+                today = timezone.now().date()
+                human_count = Comment.objects.filter(
+                    document_version=dv,
+                    section_reference=section,
+                    authors__user=self.request.user,
+                    created_at__date=today
+                ).distinct().count()
+                if human_count >= 2:
+                    raise ValidationError('Comment limit reached: max 2 per section per day per user.')
+
         comment = serializer.save(status='draft')
 
         # Create a CommentAuthor entry for the current user
@@ -197,6 +241,8 @@ class CommentViewSet(viewsets.ModelViewSet):
         """
         Submit a comment for moderation.
         """
+        import logging
+        logger = logging.getLogger(__name__)
         comment = self.get_object()
 
         # Check if the user is an author
@@ -207,21 +253,77 @@ class CommentViewSet(viewsets.ModelViewSet):
         if comment.status != 'draft':
             return Response({'detail': 'Only draft comments can be submitted.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate that AI-generated SC and rSC comments are in question form
-        if comment.comment_type.code in ['SC', 'rSC'] and comment.is_ai_generated and not comment.is_question():
+        # Validate question form for all comments
+        if not comment.is_question():
             return Response(
-                {'detail': f"AI-generated {comment.comment_type.code} comments must be in question form (end with '?')"},
+                {'detail': "All comments must be in question form (end with '?')"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # Update the status
-        comment.status = 'submitted'
+        comment.status = 'under_review'
         comment.status_date = timezone.now()
         comment.status_user = request.user
         comment.save()
+        logger.info(f"Comment {comment.id} submitted by user {request.user.id}")
 
         serializer = self.get_serializer(comment)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def moderate(self, request, pk=None):
+        """Moderate a comment (detail action)."""
+        import logging
+        logger = logging.getLogger(__name__)
+        comment = self.get_object()
+
+        # Permission: staff or assigned moderator/review editor
+        if not request.user.is_staff:
+            from publications.models import DocumentModerator, DocumentReviewEditor
+            is_moderator = DocumentModerator.objects.filter(document_version=comment.document_version, user=request.user, is_active=True).exists()
+            is_editor = DocumentReviewEditor.objects.filter(document_version=comment.document_version, user=request.user, is_active=True).exists()
+            if not (is_moderator or is_editor):
+                return Response({'detail': 'You are not assigned as a moderator or review editor to this document.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if comment.status not in ['submitted', 'under_review']:
+            return Response({'detail': 'Comment is not pending moderation.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        decision = request.data.get('decision')
+        decision_reason = request.data.get('decision_reason', '')
+        if decision not in ['approved', 'rejected', 'needs_revision']:
+            return Response({'detail': 'Invalid decision.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Checklist flags (optional)
+        checked_question_form = bool(request.data.get('checked_question_form', False))
+        checked_sources = bool(request.data.get('checked_sources', False))
+        checked_anchor = bool(request.data.get('checked_anchor', False))
+
+        moderation = CommentModeration.objects.create(
+            comment=comment,
+            moderator=request.user,
+            decision=decision,
+            decision_reason=decision_reason,
+            checked_question_form=checked_question_form,
+            checked_sources=checked_sources,
+            checked_anchor=checked_anchor
+        )
+
+        if decision == 'approved':
+            comment.status = 'accepted'
+            if comment.comment_type.requires_doi and not comment.doi:
+                if comment.document_version.status == 'published' and comment.document_version.version_number >= 1:
+                    comment.doi = f"10.1234/lsd.comment.{comment.id}"
+        elif decision == 'rejected':
+            comment.status = 'rejected'
+        else:
+            comment.status = 'draft'
+
+        comment.status_date = timezone.now()
+        comment.status_user = request.user
+        comment.save()
+        logger.info(f"Comment {comment.id} moderated by user {request.user.id} with decision {decision}")
+
+        return Response(CommentModerationSerializer(moderation).data)
 
     @action(detail=True, methods=['post'])
     def create_chat(self, request, pk=None):
@@ -398,7 +500,7 @@ class CommentModerationViewSet(viewsets.ModelViewSet):
         # Staff members can see all pending comments
         if user.is_staff:
             pending_comments = Comment.objects.filter(
-                status='submitted'
+                Q(status='under_review') | Q(status='submitted')
             ).exclude(
                 id__in=CommentModeration.objects.values_list('comment_id', flat=True)
             )
@@ -428,9 +530,8 @@ class CommentModerationViewSet(viewsets.ModelViewSet):
 
         # Get pending comments for assigned documents
         pending_comments = Comment.objects.filter(
-            status='submitted',
             document_version__in=assigned_documents
-        ).exclude(
+        ).filter(Q(status='under_review') | Q(status='submitted')).exclude(
             id__in=CommentModeration.objects.values_list('comment_id', flat=True)
         )
 
@@ -449,9 +550,11 @@ class CommentModerationViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Comment ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            comment = Comment.objects.get(id=comment_id, status='submitted')
+            comment = Comment.objects.get(id=comment_id)
+            if comment.status not in ['submitted', 'under_review']:
+                return Response({'detail': 'Comment is not pending moderation.'}, status=status.HTTP_400_BAD_REQUEST)
         except Comment.DoesNotExist:
-            return Response({'detail': 'Comment not found or not in submitted status.'}, 
+            return Response({'detail': 'Comment not found.'}, 
                            status=status.HTTP_404_NOT_FOUND)
 
         # Staff members can moderate any comment
@@ -485,25 +588,31 @@ class CommentModerationViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Decision is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            comment = Comment.objects.get(id=comment_id, status='submitted')
+            comment = Comment.objects.get(id=comment_id)
+            if comment.status not in ['submitted', 'under_review']:
+                return Response({'detail': 'Comment is not pending moderation.'}, status=status.HTTP_400_BAD_REQUEST)
         except Comment.DoesNotExist:
-            return Response({'detail': 'Comment not found or not in submitted status.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Comment not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Create moderation entry
+        import logging
+        logger = logging.getLogger(__name__)
         moderation = CommentModeration.objects.create(
             comment=comment,
             moderator=request.user,
             decision=decision,
             decision_reason=decision_reason
         )
+        logger.info(f"Moderation record created for comment {comment.id} by user {request.user.id} decision {decision}")
 
         # Update comment status based on decision
         if decision == 'approved':
-            comment.status = 'published'
-            # Generate DOI if required by comment type
+            comment.status = 'accepted'
+            # Generate DOI if required by comment type and document version is published (>= v1)
             if comment.comment_type.requires_doi and not comment.doi:
-                # This is a placeholder - in a real system, you would integrate with a DOI service
-                comment.doi = f"10.1234/lsd.comment.{comment.id}"
+                if comment.document_version.status == 'published' and comment.document_version.version_number >= 1:
+                    # Placeholder DOI minting logic; integrate DataCite in production
+                    comment.doi = f"10.1234/lsd.comment.{comment.id}"
         elif decision == 'rejected':
             comment.status = 'rejected'
         else:  # needs_revision

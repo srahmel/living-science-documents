@@ -61,9 +61,17 @@ class DocumentVersion(models.Model):
         ('withdrawn', 'Withdrawn'),
     ]
 
+    DOI_STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('registered', 'Registered'),
+        ('findable', 'Findable'),
+        ('error', 'Error'),
+    ]
+
     publication = models.ForeignKey(Publication, on_delete=models.CASCADE, related_name='document_versions')
     version_number = models.PositiveIntegerField()
     doi = models.CharField(max_length=200, unique=True)
+    doi_status = models.CharField(max_length=20, choices=DOI_STATUS_CHOICES, default='draft')
     content = models.TextField(blank=True, null=True)
     original_file = models.CharField(max_length=500, blank=True, null=True, help_text="Path to the original imported file")
     technical_abstract = models.TextField(blank=True, null=True)
@@ -93,7 +101,7 @@ class DocumentVersion(models.Model):
         ordering = ['-version_number']
 
     def __str__(self):
-        return f"{self.publication.title} v{self.version_number}"
+        return f"{self.publication.title} v{self.version_number}" 
 
 
 class Author(models.Model):

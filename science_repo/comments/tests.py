@@ -630,7 +630,7 @@ class CommentAPITest(APITestCase):
         response = self.client.post(f"{self.comments_url}{draft_comment.id}/submit/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         draft_comment.refresh_from_db()
-        self.assertEqual(draft_comment.status, 'submitted')
+        self.assertEqual(draft_comment.status, 'under_review')
 
     def test_moderate_comment(self):
         """Test the moderate_comment endpoint"""

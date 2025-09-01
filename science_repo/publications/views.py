@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status, filters, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
@@ -824,27 +825,44 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
         """
-        Publish a document version.
+        Publish a document version and mint/update its DOI via DataCite.
 
         When a new version is published, discussions on previous versions are automatically closed.
         """
         document = self.get_object()
 
         from core.exceptions import format_error_response
+        from core.doi import DOIService
 
         # Check if the user is the editorial board member
         if document.publication.editorial_board != request.user:
             return format_error_response('Only editorial board members can publish documents.', status.HTTP_403_FORBIDDEN)
 
+        # Idempotency: if already published and DOI is findable/registered, return current state
+        if document.status == 'published' and getattr(document, 'doi_status', None) in ['findable', 'registered']:
+            serializer = self.get_serializer(document)
+            return Response(serializer.data)
+
         # Check if the document is in accepted status
         if document.status != 'accepted':
             return format_error_response('Only accepted documents can be published.')
 
-        # Update the status
+        # Transition to published locally
         document.status = 'published'
         document.status_date = timezone.now()
         document.status_user = request.user
         document.release_date = timezone.now().date()
+
+        # Mint/update DOI and set findable (idempotent)
+        try:
+            final_state = DOIService.publish_version(document)
+            document.doi_status = final_state
+        except Exception as e:
+            logger.error(f"DOI publish failed for {document.id} ({document.doi}): {e}")
+            document.doi_status = 'error'
+            document.save()
+            return format_error_response('Failed to publish DOI with DataCite. Please try again later or contact support.', status.HTTP_502_BAD_GATEWAY, exc=e)
+
         document.save()
 
         # Close discussions on previous versions of this publication
@@ -858,8 +876,6 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
             prev_version.discussion_closed_date = timezone.now()
             prev_version.discussion_closed_by = request.user
             prev_version.save()
-
-            # Log the action
             logger.info(
                 f"Discussions closed for {prev_version} due to new version {document.version_number} publication. "
                 f"Closed by {request.user.username}."
@@ -913,6 +929,7 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
         document = self.get_object()
 
         from core.exceptions import format_error_response
+        from core.doi import DOIService
 
         # Check if the user is an author or the editorial board member
         is_author = document.authors.filter(user=request.user).exists()
@@ -937,12 +954,80 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
             document.status_date = timezone.now()
             document.status_user = request.user
 
+        # Update DOI to registered (not findable)
+        try:
+            final_state = DOIService.withdraw_version(document)
+            document.doi_status = final_state
+        except Exception as e:
+            logger.error(f"DOI withdraw failed for {document.id} ({document.doi}): {e}")
+            document.doi_status = 'error'
+
         document.save()
 
         # Log the action
         logger.info(
             f"Publication {document} withdrawn by {request.user.username}."
         )
+
+        serializer = self.get_serializer(document)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def undo_publish(self, request, pk=None):
+        """
+        Undo a publication: revert status to 'accepted' and set DOI state to 'registered'.
+        Only editorial board or staff can perform.
+        """
+        document = self.get_object()
+        from core.exceptions import format_error_response
+        from core.doi import DOIService
+
+        if document.publication.editorial_board != request.user and not request.user.is_staff:
+            return format_error_response('Only editorial board members or staff can undo publication.', status.HTTP_403_FORBIDDEN)
+
+        # Only allow undo if currently published or archived
+        if document.status not in ['published', 'archived']:
+            return format_error_response('Undo is only allowed for published or archived versions.', status.HTTP_400_BAD_REQUEST)
+
+        try:
+            final_state = DOIService.withdraw_version(document)
+            document.doi_status = final_state
+        except Exception as e:
+            logger.error(f"DOI undo (register) failed for {document.id} ({document.doi}): {e}")
+            document.doi_status = 'error'
+
+        # Revert local status to accepted
+        document.status = 'accepted'
+        document.status_date = timezone.now()
+        document.status_user = request.user
+        document.save()
+
+        logger.info(f"Undo publish for {document} by {request.user.username}")
+        serializer = self.get_serializer(document)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def update_doi(self, request, pk=None):
+        """
+        Update DOI metadata in DataCite based on current document fields.
+        Allowed for editorial board or staff.
+        """
+        document = self.get_object()
+        from core.exceptions import format_error_response
+        from core.doi import DOIService
+
+        if document.publication.editorial_board != request.user and not request.user.is_staff:
+            return format_error_response('Only editorial board members or staff can update DOI metadata.', status.HTTP_403_FORBIDDEN)
+
+        try:
+            new_state = DOIService.update_version_metadata(document)
+            # Keep existing doi_status if already findable, else set returned state
+            if document.doi_status != 'findable':
+                document.doi_status = new_state
+            document.save()
+        except Exception as e:
+            logger.error(f"DOI metadata update failed for {document.id} ({document.doi}): {e}")
+            return format_error_response('Failed to update DOI metadata.', status.HTTP_502_BAD_GATEWAY, exc=e)
 
         serializer = self.get_serializer(document)
         return Response(serializer.data)
@@ -1036,20 +1121,20 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='upload-image')
     def upload_image(self, request):
         """
-        Upload an image (from paste/drop) with validation, optional ClamAV scan,
+        Upload an image (from paste/drop) with validation, ClamAV scan (required),
         EXIF stripping, and return the final storage URL and metadata.
         Accepts multipart/form-data with fields:
           - file: the image file (required)
           - title (optional)
           - description (optional)
           - document_version (optional int) to attach under a document version
-        Returns JSON with: url, mime, size, width, height, checksum_sha256, exif_removed, clamav_status.
+        Returns JSON with: url, mime, size, width, height, checksum_sha256, exif_removed.
+        Aliases w/h/hash are also included for editor convenience.
         """
         from core.exceptions import format_error_response
-        from django.core.files.base import ContentFile
         from django.core.files.uploadedfile import InMemoryUploadedFile
         from django.conf import settings
-        from PIL import Image
+        from PIL import Image, ImageOps
         import io, hashlib
 
         img_file = request.FILES.get('file') or request.FILES.get('image')
@@ -1057,27 +1142,28 @@ class AttachmentViewSet(viewsets.ModelViewSet):
             return format_error_response('No image file provided.', status.HTTP_400_BAD_REQUEST)
 
         # MIME and size validation
-        allowed_mimes = {'image/png', 'image/jpeg', 'image/webp', 'image/gif'}
-        content_type = getattr(img_file, 'content_type', None) or ''
-        if content_type.lower() not in allowed_mimes:
+        allowed_mimes = {'image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'}
+        content_type = (getattr(img_file, 'content_type', None) or '').lower()
+        if content_type not in allowed_mimes:
             return format_error_response(f'Unsupported image MIME type: {content_type}', status.HTTP_400_BAD_REQUEST)
 
         max_mb = getattr(settings, 'MAX_UPLOAD_IMAGE_SIZE_MB', 15)
         if img_file.size > max_mb * 1024 * 1024:
             return format_error_response(f'File too large. Max {max_mb} MB.', status.HTTP_400_BAD_REQUEST)
 
-        # Optional ClamAV scan
-        clamav_status = 'skipped'
+        # ClamAV scan is required unless explicitly disabled
+        require_clamav = getattr(settings, 'REQUIRE_CLAMAV_FOR_UPLOAD', True)
         clam_host = getattr(settings, 'CLAMAV_HOST', None)
         clam_port = getattr(settings, 'CLAMAV_PORT', None)
+        if require_clamav and (not clam_host or not clam_port):
+            return format_error_response('Virus scanning not configured. Contact administrator.', status.HTTP_503_SERVICE_UNAVAILABLE)
+
         if clam_host and clam_port:
             try:
                 import socket
                 import struct
-                # Simple INSTREAM command to clamd (if available)
-                s = socket.create_connection((clam_host, int(clam_port)), timeout=5)
+                s = socket.create_connection((clam_host, int(clam_port)), timeout=10)
                 s.sendall(b'nINSTREAM\n')
-                # stream in chunks
                 for chunk in img_file.chunks():
                     s.sendall(struct.pack('!I', len(chunk)))
                     s.sendall(chunk)
@@ -1087,42 +1173,51 @@ class AttachmentViewSet(viewsets.ModelViewSet):
                 msg = data.decode('utf-8', errors='ignore')
                 if 'FOUND' in msg:
                     return format_error_response('Virus detected in uploaded file.', status.HTTP_400_BAD_REQUEST)
-                clamav_status = 'clean'
             except Exception as e:
-                logger.warning(f"ClamAV scan skipped due to error: {e}")
-                clamav_status = 'error'
+                logger.error(f"ClamAV scan failed: {e}")
+                return format_error_response('Virus scan failed. Please try again later.', status.HTTP_503_SERVICE_UNAVAILABLE)
             finally:
                 img_file.seek(0)
 
-        # Strip EXIF by re-encoding via Pillow
+        # EXIF strip / normalization
         exif_removed = False
         width = height = None
         out_bytes = io.BytesIO()
-        try:
-            with Image.open(img_file) as im:
-                width, height = im.size
-                format = im.format or 'PNG'
-                save_kwargs = {}
-                if format.upper() == 'JPEG':
-                    save_kwargs = {'format': 'JPEG', 'quality': 95, 'optimize': True}
-                elif format.upper() == 'PNG':
-                    save_kwargs = {'format': 'PNG', 'optimize': True}
-                elif format.upper() == 'WEBP':
-                    save_kwargs = {'format': 'WEBP', 'quality': 90}
-                else:
-                    # fallback to PNG
-                    save_kwargs = {'format': 'PNG'}
-                im_no_exif = Image.new(im.mode, im.size)
-                im_no_exif.putdata(list(im.getdata()))
-                im_no_exif.save(out_bytes, **save_kwargs)
-                exif_removed = True
-        except Exception as e:
-            # If Pillow fails (e.g., GIF), just pass through original bytes
-            logger.warning(f"Pillow EXIF strip failed, using original image: {e}")
-            img_file.seek(0)
+
+        if content_type == 'image/svg+xml':
+            # For SVG, pass-through bytes (no EXIF), compute checksum only
             out_bytes = io.BytesIO(img_file.read())
-        finally:
-            img_file.seek(0)
+            exif_removed = True
+            width = None
+            height = None
+        else:
+            try:
+                with Image.open(img_file) as im:
+                    # Normalize orientation
+                    im = ImageOps.exif_transpose(im)
+                    width, height = im.size
+                    fmt = (im.format or 'PNG').upper()
+                    save_kwargs = {}
+                    if fmt == 'JPEG':
+                        save_kwargs = {'format': 'JPEG', 'quality': 95, 'optimize': True}
+                    elif fmt == 'PNG':
+                        save_kwargs = {'format': 'PNG', 'optimize': True}
+                    elif fmt == 'WEBP':
+                        save_kwargs = {'format': 'WEBP', 'quality': 90}
+                    else:
+                        save_kwargs = {'format': 'PNG'}
+                    # Preserve ICC profile if present but drop EXIF
+                    icc = im.info.get('icc_profile')
+                    if icc:
+                        save_kwargs['icc_profile'] = icc
+                    im.save(out_bytes, **save_kwargs)
+                    exif_removed = True
+            except Exception as e:
+                logger.warning(f"Image processing failed, using original image: {e}")
+                img_file.seek(0)
+                out_bytes = io.BytesIO(img_file.read())
+            finally:
+                img_file.seek(0)
 
         out_bytes.seek(0)
         final_bytes = out_bytes.getvalue()
@@ -1168,7 +1263,10 @@ class AttachmentViewSet(viewsets.ModelViewSet):
             'height': height,
             'checksum_sha256': checksum,
             'exif_removed': exif_removed,
-            'clamav_status': clamav_status,
+            # aliases for editor schemas
+            'w': width,
+            'h': height,
+            'hash': checksum,
         }, status=status.HTTP_201_CREATED)
 
 

@@ -64,11 +64,9 @@ class Comment(models.Model):
     """
     STATUS_CHOICES = [
         ('draft', 'Draft'),
-        ('submitted', 'Submitted'),
         ('under_review', 'Under Review'),
         ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
-        ('published', 'Published'),
     ]
 
     document_version = models.ForeignKey(DocumentVersion, on_delete=models.CASCADE, related_name='comments')
@@ -79,6 +77,7 @@ class Comment(models.Model):
     section_reference = models.CharField(max_length=100, null=True, blank=True)
     line_start = models.PositiveIntegerField(null=True, blank=True)
     line_end = models.PositiveIntegerField(null=True, blank=True)
+    range_hash = models.CharField(max_length=100, null=True, blank=True)
     doi = models.CharField(max_length=200, null=True, blank=True, unique=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -147,6 +146,7 @@ class ConflictOfInterest(models.Model):
 class CommentModeration(models.Model):
     """
     CommentModeration model representing the moderation process for a comment.
+    Includes a simple checklist for validation steps.
     """
     comment = models.OneToOneField(Comment, on_delete=models.CASCADE, related_name='moderation')
     moderator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='moderated')
@@ -157,6 +157,9 @@ class CommentModeration(models.Model):
         ('needs_revision', 'Needs Revision'),
     ])
     decision_reason = models.TextField(null=True, blank=True)
+    checked_question_form = models.BooleanField(default=False)
+    checked_sources = models.BooleanField(default=False)
+    checked_anchor = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Moderation of {self.comment} by {self.moderator.get_full_name()}"
