@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Publication Status Update - Living Science Documents</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .header {
+            background-color: #4285f4;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+        }
+        .status-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .status-box.under-review {
+            border-left-color: #ffc107;
+        }
+        .status-box.rejected {
+            border-left-color: #dc3545;
+        }
+        .status-box.revision-required {
+            border-left-color: #fd7e14;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4285f4;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            padding: 20px;
+        }
+        .meta {
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Publication Status Update</h1>
+    </div>
+
+    <div class="content">
+        <p>Hello,</p>
+
+        <p>The status of your publication has been updated.</p>
+
+        <div class="status-box {% if document_version.status == 'under_review' %}under-review{% elif document_version.status == 'rejected' %}rejected{% elif document_version.status == 'revision_required' %}revision-required{% endif %}">
+            <div class="meta">
+                <strong>Publication:</strong> {{ publication.title }}<br>
+                <strong>Version:</strong> {{ document_version.version }}<br>
+                <strong>New Status:</strong> {{ document_version.get_status_display }}<br>
+                <strong>Updated:</strong> {{ document_version.status_date|date:"F d, Y H:i" }}
+                {% if document_version.doi %}
+                <br><strong>DOI:</strong> {{ document_version.doi }}
+                {% endif %}
+            </div>
+        </div>
+
+        {% if document_version.status == 'published' %}
+        <p>🎉 Congratulations! Your publication has been published and is now publicly available.</p>
+        <p>Your work has been assigned a DOI and can now be cited by the scientific community.</p>
+        {% elif document_version.status == 'under_review' %}
+        <p>Your publication is currently under peer review. We will notify you once the review process is complete.</p>
+        {% elif document_version.status == 'revision_required' %}
+        <p>The reviewers have requested revisions to your publication. Please review the feedback and submit a revised version.</p>
+        {% elif document_version.status == 'rejected' %}
+        <p>Unfortunately, your publication was not accepted for publication. You will receive detailed feedback from the reviewers.</p>
+        {% elif document_version.status == 'draft' %}
+        <p>Your publication has been saved as a draft. You can continue editing and submit it for review when ready.</p>
+        {% endif %}
+
+        <a href="{{ publication_url }}" class="button">View Publication</a>
+
+        <p>If you have any questions about this status update, please don't hesitate to contact our editorial team.</p>
+
+        <p>Best regards,<br>
+        The Living Science Documents Team</p>
+    </div>
+
+    <div class="footer">
+        <p>© 2025 Living Science Documents. All rights reserved.</p>
+    </div>
+</body>
+</html>
