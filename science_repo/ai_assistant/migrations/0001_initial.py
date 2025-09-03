@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("comments", "0001_initial"),
-        ("publications", "0001_initial"),
+        ("publications", "0002_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

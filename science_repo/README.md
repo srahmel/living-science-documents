@@ -1,5 +1,7 @@
 # Living Science Documents - Backend API
 
+Last updated: 2025-09-02 00:57 (local)
+
 This repository contains the backend API for the Living Science Documents platform, a collaborative, versionable, scientifically supervised publication and discussion platform.
 
 ## Project Structure
@@ -22,13 +24,19 @@ The API is organized into the following namespaces:
 
 ## API Documentation (Swagger)
 
+Note: The live schema at /swagger.json is generated from the current URL configuration and serializers using drf-yasg. If you find a mismatch between code and docs, clear caches and refresh; no manual editing of swagger.json in the repo is required.
+
 The API is documented using Swagger/OpenAPI. You can access the documentation at:
 
-- `/swagger/`: Interactive Swagger UI for exploring and testing the API
+- `/swagger/`: Interactive Swagger UI for exploring and testing the API (generated dynamically by drf-yasg)
 - `/redoc/`: ReDoc UI for a more readable documentation experience
-- `/swagger.json` or `/swagger.yaml`: Raw schema files for integration with other tools
+- `/swagger.json` or `/swagger.yaml`: Raw schema files (live, generated from code; prefer these over any static file in the repo)
 
 ### How to use Swagger UI:
+
+To export the current OpenAPI schema to a file:
+- PowerShell: `Invoke-WebRequest http://localhost:8000/swagger.json -OutFile swagger.json`
+- curl: `curl -s http://localhost:8000/swagger.json > swagger.json`
 
 1. Start the development server: `python manage.py runserver`
 2. Navigate to `http://localhost:8000/swagger/` in your browser
@@ -168,6 +176,10 @@ The API is documented using Swagger/OpenAPI. You can access the documentation at
    ORCID_CLIENT_ID=your_orcid_client_id
    ORCID_CLIENT_SECRET=your_orcid_client_secret
    FRONTEND_URL=http://localhost:3000
+
+   # Used for correct schema/servers in Swagger generation
+   API_BASE_URL=http://localhost:8000
+   API_PATH=/
 
    CORS_ALLOW_ALL_ORIGINS=True
    CORS_ALLOWED_ORIGINS=http://localhost:3000
