@@ -215,15 +215,21 @@ class JATSConverter:
         """
         try:
             # Create the root element
-            root = etree.Element("article", 
-                                attrib={
-                                    "xmlns:xlink": "http://www.w3.org/1999/xlink",
-                                    "xmlns:mml": "http://www.w3.org/1998/Math/MathML",
-                                    "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-                                    "article-type": "research-article",
-                                    "dtd-version": "1.3",
-                                    "xml:lang": "en"
-                                })
+            # Define namespaces via nsmap to avoid invalid xmlns:* attributes
+            nsmap = {
+                'xlink': 'http://www.w3.org/1999/xlink',
+                'mml': 'http://www.w3.org/1998/Math/MathML',
+                'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            }
+            root = etree.Element(
+                'article',
+                nsmap=nsmap,
+                attrib={
+                    'article-type': 'research-article',
+                    'dtd-version': '1.3',
+                    '{http://www.w3.org/XML/1998/namespace}lang': 'en',
+                },
+            )
 
             # Create the front element (metadata)
             front = etree.SubElement(root, "front")
