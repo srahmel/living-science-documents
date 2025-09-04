@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from core import views as core_views
 
 # Get the base URL from settings
 base_url = settings.FORCE_SCRIPT_NAME or ''
@@ -29,6 +30,8 @@ urlpatterns = [
     path('api/publications/', include('publications.urls')),
     path('api/comments/', include('comments.urls')),
     path('api/ai/', include('ai_assistant.urls')),
+    # Frontend helper pages (not under /api)
+    re_path(r'^login/success/?$', core_views.login_success_page, name='login-success'),
     # Swagger documentation
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     # Use a custom Swagger UI template to fix button contrast issues

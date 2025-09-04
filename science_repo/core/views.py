@@ -1,4 +1,4 @@
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.conf import settings
 from rest_framework import status, viewsets, generics, permissions
 from rest_framework.decorators import api_view, permission_classes
@@ -21,6 +21,8 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from .email import EmailService
+import logging
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -272,6 +274,7 @@ def orcid_login(request):
     # Decide scope: if only Public API credentials, use /authenticate
     scope = "/authenticate"
     auth_url = ORCIDAuth.get_auth_url(redirect_uri, scope=scope) + f"&state={state}"
+    logger.debug("ORCID login: redirect_uri=%s scope=%s state_set=%s auth_url_built=%s", redirect_uri, scope, True, bool(auth_url))
     return Response({'auth_url': auth_url, 'state': state})
 
 
@@ -316,7 +319,12 @@ def orcid_callback(request):
         accept_hdr = request.headers.get('Accept', '')
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         wants_json = ('application/json' in accept_hdr) or (request.GET.get('format') == 'json') or is_ajax
-        allow_stateless = getattr(settings, 'ORCID_ALLOW_STATELESS_CALLBACK', False) and wants_json
+        # Allow stateless callback if explicitly enabled or in DEBUG (useful for DRF/Swagger manual tests)
+        allow_stateless = getattr(settings, 'ORCID_ALLOW_STATELESS_CALLBACK', False) or getattr(settings, 'DEBUG', False)
+        logger.debug(
+            "ORCID callback start: has_code=%s has_state=%s allow_stateless=%s",
+            bool(code), bool(incoming_state), allow_stateless
+        )
 
         # Validate state to prevent CSRF unless explicitly allowed for stateless JSON callback
         expected_state = request.session.get('orcid_oauth_state')
@@ -333,20 +341,43 @@ def orcid_callback(request):
 
         callback_url = reverse('orcid_callback')
         redirect_uri = request.build_absolute_uri(callback_url)
+        logger.debug("ORCID callback: using redirect_uri=%s", redirect_uri)
 
         # Get ORCID token
         token_data = ORCIDAuth.get_token(code, redirect_uri)
         orcid_id = token_data['orcid']
         access_token = token_data['access_token']
+        logger.debug(
+            "ORCID callback token obtained: orcid_id=%s token_type=%s scope=%s",
+            orcid_id, token_data.get('token_type'), token_data.get('scope')
+        )
         # Validate ORCID checksum
         if not ORCIDAuth.validate_orcid_checksum(orcid_id):
             return Response({'error': 'Invalid ORCID iD checksum'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get ORCID profile
-        profile = ORCIDAuth.get_orcid_profile(access_token)
-
-        # Extract user information from profile
-        user_info = ORCIDAuth.extract_user_info(profile)
+        # Get ORCID profile (person endpoint requires ORCID iD in path)
+        user_info = {
+            'first_name': '',
+            'last_name': '',
+            'email': '',
+            'other_names': [],
+            'biography': '',
+            'keywords': [],
+            'country': '',
+            'website': '',
+        }
+        try:
+            logger.debug("ORCID callback: fetching profile for orcid_id=%s", orcid_id)
+            profile = ORCIDAuth.get_orcid_profile(access_token, orcid_id)
+            # Extract user information from profile when available
+            user_info = ORCIDAuth.extract_user_info(profile)
+            logger.debug("ORCID callback: profile fetched and user_info extracted for %s", orcid_id)
+        except Exception as profile_err:
+            # Log and proceed with minimal data; do not block login on profile access issues
+            logger.warning(
+                "ORCID profile not accessible for %s: %s — proceeding with minimal user creation",
+                orcid_id, str(profile_err)
+            )
 
         # Format ORCID ID for display
         formatted_orcid = ORCIDAuth.format_orcid_id(orcid_id)
@@ -364,6 +395,7 @@ def orcid_callback(request):
                 'research_field': ', '.join(user_info['keywords']),
             }
         )
+        logger.debug("ORCID callback: user %s (created=%s)", user.username, created)
 
         # Update user information if not created
         if not created:
@@ -416,6 +448,7 @@ def orcid_callback(request):
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         wants_json = ('application/json' in accept) or (request.GET.get('format') == 'json') or is_ajax
         if wants_json:
+            logger.debug("ORCID callback: returning JSON tokens for user_id=%s", user.id)
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -423,11 +456,14 @@ def orcid_callback(request):
             }, status=status.HTTP_200_OK)
 
         frontend_url = settings.FRONTEND_URL
-        return redirect(f'{frontend_url}/login/success?'
+        redirect_url = (f'{frontend_url}/login/success?'
                         f'access={str(refresh.access_token)}&'
                         f'refresh={str(refresh)}')
+        logger.debug("ORCID callback: redirecting to frontend success URL for user_id=%s", user.id)
+        return redirect(redirect_url)
 
     except Exception as e:
+        logger.exception("ORCID callback failed: %s", str(e))
         return Response(
             {'error': str(e)},
             status=status.HTTP_400_BAD_REQUEST
@@ -875,3 +911,14 @@ def password_reset_confirm(request):
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+def login_success_page(request):
+    """
+    Simple HTML page that reads access/refresh from query params, stores them in
+    localStorage (via template JS), and redirects to the app base path.
+    This handles the redirect target constructed by the ORCID callback.
+    """
+    app_base_path = getattr(settings, 'FORCE_SCRIPT_NAME', '/') or '/'
+    return render(request, 'login_success.html', {'app_base_path': app_base_path})

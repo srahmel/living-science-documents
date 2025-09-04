@@ -97,7 +97,7 @@ class ORCIDAuthTest(TestCase):
         mock_get.return_value = mock_response
 
         # Call the method
-        profile = ORCIDAuth.get_orcid_profile(self.access_token)
+        profile = ORCIDAuth.get_orcid_profile(self.access_token, self.orcid_id)
 
         # Check that the method returns the expected response
         self.assertEqual(profile['name']['given-names']['value'], 'Test')
@@ -106,7 +106,7 @@ class ORCIDAuthTest(TestCase):
 
         # Check that the get request was called with the expected arguments
         mock_get.assert_called_once_with(
-            f'{settings.ORCID_API_URL}/person',
+            f'{settings.ORCID_API_URL}/{self.orcid_id}/person',
             headers={
                 'Accept': 'application/vnd.orcid+json',
                 'Authorization': f'Bearer {self.access_token}'
@@ -124,7 +124,7 @@ class ORCIDAuthTest(TestCase):
 
         # Call the method and check that it raises a ValidationError
         with self.assertRaises(ValidationError):
-            ORCIDAuth.get_orcid_profile(self.access_token)
+            ORCIDAuth.get_orcid_profile(self.access_token, self.orcid_id)
 
     @patch('requests.get')
     def test_get_orcid_record_success(self, mock_get):
@@ -303,3 +303,78 @@ class ORCIDAuthTest(TestCase):
         self.assertEqual(user_info['keywords'], [])
         self.assertEqual(user_info['country'], '')
         self.assertEqual(user_info['website'], '')
+
+
+# --- Appended tests for fallback behavior ---
+from unittest.mock import patch, MagicMock
+
+
+class ORCIDAuthFallbackTest(TestCase):
+    def setUp(self):
+        self.access_token = 'user_token_without_read_scope'
+        self.orcid_id = '0000-0001-2345-6789'
+        self.profile_payload = {
+            'name': {
+                'given-names': {'value': 'Test'},
+                'family-name': {'value': 'User'}
+            }
+        }
+        self.record_payload = {
+            'orcid-identifier': {
+                'path': self.orcid_id
+            }
+        }
+
+    @patch('requests.post')
+    def test_get_public_app_token_success(self, mock_post):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {'access_token': 'app_public_token', 'token_type': 'bearer', 'scope': '/read-public'}
+        mock_post.return_value = mock_resp
+
+        token = ORCIDAuth.get_public_app_token()
+        self.assertEqual(token, 'app_public_token')
+        mock_post.assert_called_once()
+        called_url = mock_post.call_args[0][0]
+        called_kwargs = mock_post.call_args[1]
+        self.assertEqual(called_url, settings.ORCID_TOKEN_URL)
+        # Form params
+        self.assertEqual(called_kwargs['data']['grant_type'], 'client_credentials')
+        self.assertEqual(called_kwargs['data']['scope'], '/read-public')
+        self.assertEqual(called_kwargs['data']['client_id'], settings.ORCID_CLIENT_ID)
+        self.assertEqual(called_kwargs['data']['client_secret'], settings.ORCID_CLIENT_SECRET)
+        # Headers
+        self.assertEqual(called_kwargs['headers']['Accept'], 'application/json')
+
+    @patch('core.orcid.ORCIDAuth.get_public_app_token', return_value='app_public_token')
+    @patch('requests.get')
+    def test_get_orcid_profile_fallback_to_app_token(self, mock_get, mock_get_app_token):
+        # First call with user token returns 401; second call with app token returns 200
+        resp1 = MagicMock(status_code=401, text='Unauthorized')
+        resp2 = MagicMock(status_code=200)
+        resp2.json.return_value = self.profile_payload
+        mock_get.side_effect = [resp1, resp2]
+
+        profile = ORCIDAuth.get_orcid_profile(self.access_token, self.orcid_id)
+        self.assertEqual(profile, self.profile_payload)
+        self.assertTrue(mock_get_app_token.called)
+        self.assertEqual(mock_get.call_count, 2)
+        # Verify first call URL
+        first_call_url = mock_get.call_args_list[0][0][0]
+        self.assertEqual(first_call_url, f"{settings.ORCID_API_URL}/{self.orcid_id}/person")
+
+    @patch('core.orcid.ORCIDAuth.get_public_app_token', return_value='app_public_token')
+    @patch('requests.get')
+    def test_get_orcid_record_fallback_to_app_token(self, mock_get, mock_get_app_token):
+        # First call 403, then 200
+        resp1 = MagicMock(status_code=403, text='Forbidden')
+        resp2 = MagicMock(status_code=200)
+        resp2.json.return_value = self.record_payload
+        mock_get.side_effect = [resp1, resp2]
+
+        record = ORCIDAuth.get_orcid_record(self.access_token, self.orcid_id)
+        self.assertEqual(record, self.record_payload)
+        self.assertTrue(mock_get_app_token.called)
+        self.assertEqual(mock_get.call_count, 2)
+        first_call_url = mock_get.call_args_list[0][0][0]
+        self.assertEqual(first_call_url, f"{settings.ORCID_API_URL}/{self.orcid_id}/record")

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login Success</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding: 2rem; }
+    .box { max-width: 720px; margin: 0 auto; border: 1px solid #ddd; padding: 1.5rem; border-radius: 8px; }
+    .muted { color: #666; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Signing you in…</h1>
+    <p class="muted">Please wait while we finalize your login.</p>
+    <pre id="msg" class="muted"></pre>
+  </div>
+  <script>
+    (function() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const access = params.get('access');
+        const refresh = params.get('refresh');
+        const msg = document.getElementById('msg');
+
+        if (!access || !refresh) {
+          msg.textContent = 'Missing access or refresh token in query string.';
+        } else {
+          // Store under common keys for compatibility
+          try {
+            localStorage.setItem('jwt_access', access);
+            localStorage.setItem('jwt_refresh', refresh);
+            localStorage.setItem('access', access);
+            localStorage.setItem('refresh', refresh);
+          } catch (e) {
+            // Fallback to sessionStorage if localStorage is unavailable
+            sessionStorage.setItem('jwt_access', access);
+            sessionStorage.setItem('jwt_refresh', refresh);
+            sessionStorage.setItem('access', access);
+            sessionStorage.setItem('refresh', refresh);
+          }
+          msg.textContent = 'Tokens stored. Redirecting…';
+        }
+
+        // Redirect to application root (prefix aware)
+        var base = "{{ app_base_path|escapejs }}" || '/';
+        if (!base.endsWith('/')) { base = base + '/'; }
+        // Avoid redirect loop if already at base
+        var target = base;
+        // If FORCE_SCRIPT_NAME is '/', ensure we go to '/'
+        if (target === '') { target = '/'; }
+        window.location.replace(target);
+      } catch (err) {
+        console.error('Login success handler error:', err);
+        // Still try to go to root so user isn’t stuck
+        window.location.replace('/');
+      }
+    })();
+  </script>
+</body>
+</html>
