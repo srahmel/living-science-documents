@@ -216,9 +216,17 @@ SIMPLE_JWT = {
 # ORCID OAuth2 settings (optional in tests/dev when keys are not provided)
 ORCID_CLIENT_ID = config('ORCID_CLIENT_ID', default='')
 ORCID_CLIENT_SECRET = config('ORCID_CLIENT_SECRET', default='')
+# Toggle to switch between ORCID sandbox and production
+ORCID_USE_SANDBOX = config('ORCID_USE_SANDBOX', default=False, cast=bool)
+# Base URLs (will be overridden by toggle if set)
 ORCID_BASE_URL = config('ORCID_BASE_URL', default='https://orcid.org')
 # Official production API base is https://api.orcid.org/v3.0; sandbox is https://api.sandbox.orcid.org/v3.0
 ORCID_API_URL = config('ORCID_API_URL', default='https://api.orcid.org/v3.0')
+# Apply sandbox toggle (overrides explicit base URLs when enabled)
+if ORCID_USE_SANDBOX:
+    ORCID_BASE_URL = 'https://sandbox.orcid.org'
+    ORCID_API_URL = 'https://api.sandbox.orcid.org/v3.0'
+
 ORCID_AUTH_URL = f'{ORCID_BASE_URL}/oauth/authorize'
 ORCID_TOKEN_URL = f'{ORCID_BASE_URL}/oauth/token'
 ORCID_ENABLED = bool(ORCID_CLIENT_ID and ORCID_CLIENT_SECRET)

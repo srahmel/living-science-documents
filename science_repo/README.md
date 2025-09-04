@@ -162,28 +162,43 @@ To export the current OpenAPI schema to a file:
    - Linux/Mac: `source venv/bin/activate`
 4. Install dependencies: `pip install -r requirements.txt`
 5. Create a `.env` file with the following variables:
-   ```
-   DJANGO_SECRET_KEY=your_secret_key
-   DJANGO_DEBUG=True
-   DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+  ```
+  DJANGO_SECRET_KEY=your_secret_key
+  DJANGO_DEBUG=True
+  DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 
-   POSTGRES_DB=living_science
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=your_password
-   POSTGRES_HOST=localhost
-   POSTGRES_PORT=5432
+  POSTGRES_DB=living_science
+  POSTGRES_USER=postgres
+  POSTGRES_PASSWORD=your_password
+  POSTGRES_HOST=localhost
+  POSTGRES_PORT=5432
 
-   ORCID_CLIENT_ID=your_orcid_client_id
-   ORCID_CLIENT_SECRET=your_orcid_client_secret
-   FRONTEND_URL=http://localhost:3000
+  ORCID_CLIENT_ID=your_orcid_client_id
+  ORCID_CLIENT_SECRET=your_orcid_client_secret
+  # Toggle sandbox vs. production ORCID endpoints (default False = production)
+  ORCID_USE_SANDBOX=False
+  # Optional explicit overrides (normally not needed when using ORCID_USE_SANDBOX)
+  # ORCID_BASE_URL=https://orcid.org
+  # ORCID_API_URL=https://api.orcid.org/v3.0
 
-   # Used for correct schema/servers in Swagger generation
-   API_BASE_URL=http://localhost:8000
-   API_PATH=/
+  FRONTEND_URL=http://localhost:3000
 
-   CORS_ALLOW_ALL_ORIGINS=True
-   CORS_ALLOWED_ORIGINS=http://localhost:3000
-   ```
+  # Used for correct schema/servers in Swagger generation
+  API_BASE_URL=http://localhost:8000
+  API_PATH=/
+
+  CORS_ALLOW_ALL_ORIGINS=True
+  CORS_ALLOWED_ORIGINS=http://localhost:3000
+  ```
+
+  Notes:
+  - When `ORCID_USE_SANDBOX=True`, the backend uses:
+    - Authorization/Token endpoints: https://sandbox.orcid.org/oauth/...
+    - API base: https://api.sandbox.orcid.org/v3.0
+  - When `ORCID_USE_SANDBOX=False` (default), it uses production:
+    - Authorization/Token endpoints: https://orcid.org/oauth/...
+    - API base: https://api.orcid.org/v3.0
+  - You can still force custom hosts with `ORCID_BASE_URL` and `ORCID_API_URL` if needed (they are overridden by the sandbox toggle when enabled).
 6. Run migrations: `python manage.py migrate`
 7. Create a superuser: `python manage.py createsuperuser`
 8. Run the server: `python manage.py runserver`
