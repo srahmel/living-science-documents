@@ -261,12 +261,18 @@ def orcid_login(request):
     Returns:
     - 200 OK: Returns the ORCID authentication URL
     """
-    # Änderung hier: Verwenden von reverse zur Generierung der URL
     callback_url = reverse('orcid_callback')
     redirect_uri = request.build_absolute_uri(callback_url)
-    # Request read-limited scope to get more user information
-    auth_url = ORCIDAuth.get_auth_url(redirect_uri, scope="/authenticate /read-limited")
-    return Response({'auth_url': auth_url})
+
+    # Generate state for CSRF protection
+    import secrets
+    state = secrets.token_urlsafe(32)
+    request.session['orcid_oauth_state'] = state
+
+    # Decide scope: if only Public API credentials, use /authenticate
+    scope = "/authenticate"
+    auth_url = ORCIDAuth.get_auth_url(redirect_uri, scope=scope) + f"&state={state}"
+    return Response({'auth_url': auth_url, 'state': state})
 
 
 @swagger_auto_schema(
@@ -305,7 +311,26 @@ def orcid_callback(request):
     """
     try:
         code = request.GET.get('code')
-        # Änderung hier: Verwenden von reverse zur Generierung der URL
+        incoming_state = request.GET.get('state')
+        # Determine if client expects JSON (AJAX/frontend callback)
+        accept_hdr = request.headers.get('Accept', '')
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        wants_json = ('application/json' in accept_hdr) or (request.GET.get('format') == 'json') or is_ajax
+        allow_stateless = getattr(settings, 'ORCID_ALLOW_STATELESS_CALLBACK', False) and wants_json
+
+        # Validate state to prevent CSRF unless explicitly allowed for stateless JSON callback
+        expected_state = request.session.get('orcid_oauth_state')
+        if not code:
+            return Response({'error': 'Missing authorization code'}, status=status.HTTP_400_BAD_REQUEST)
+        if not allow_stateless:
+            if not incoming_state or not expected_state or incoming_state != expected_state:
+                return Response({'error': 'Invalid OAuth state or missing state'}, status=status.HTTP_400_BAD_REQUEST)
+            # One-time use: clear state
+            try:
+                del request.session['orcid_oauth_state']
+            except KeyError:
+                pass
+
         callback_url = reverse('orcid_callback')
         redirect_uri = request.build_absolute_uri(callback_url)
 
@@ -313,6 +338,9 @@ def orcid_callback(request):
         token_data = ORCIDAuth.get_token(code, redirect_uri)
         orcid_id = token_data['orcid']
         access_token = token_data['access_token']
+        # Validate ORCID checksum
+        if not ORCIDAuth.validate_orcid_checksum(orcid_id):
+            return Response({'error': 'Invalid ORCID iD checksum'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get ORCID profile
         profile = ORCIDAuth.get_orcid_profile(access_token)
@@ -383,7 +411,17 @@ def orcid_callback(request):
             from core.email import EmailService
             EmailService.send_welcome_email(user)
 
-        # Redirect to frontend with tokens
+        # If JSON requested, return tokens and user; else redirect to frontend with tokens
+        accept = request.headers.get('Accept', '')
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        wants_json = ('application/json' in accept) or (request.GET.get('format') == 'json') or is_ajax
+        if wants_json:
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+
         frontend_url = settings.FRONTEND_URL
         return redirect(f'{frontend_url}/login/success?'
                         f'access={str(refresh.access_token)}&'

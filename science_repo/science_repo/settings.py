@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'science_repo.csp.ContentSecurityPolicyMiddleware',
 ]
 
 # CORS settings
@@ -215,11 +216,13 @@ SIMPLE_JWT = {
 # ORCID OAuth2 settings (optional in tests/dev when keys are not provided)
 ORCID_CLIENT_ID = config('ORCID_CLIENT_ID', default='')
 ORCID_CLIENT_SECRET = config('ORCID_CLIENT_SECRET', default='')
-ORCID_BASE_URL = 'https://orcid.org'
-ORCID_API_URL = 'https://pub.orcid.org/v3.0'
+ORCID_BASE_URL = config('ORCID_BASE_URL', default='https://orcid.org')
+# Official production API base is https://api.orcid.org/v3.0; sandbox is https://api.sandbox.orcid.org/v3.0
+ORCID_API_URL = config('ORCID_API_URL', default='https://api.orcid.org/v3.0')
 ORCID_AUTH_URL = f'{ORCID_BASE_URL}/oauth/authorize'
 ORCID_TOKEN_URL = f'{ORCID_BASE_URL}/oauth/token'
 ORCID_ENABLED = bool(ORCID_CLIENT_ID and ORCID_CLIENT_SECRET)
+ORCID_ALLOW_STATELESS_CALLBACK = config('ORCID_ALLOW_STATELESS_CALLBACK', default=True, cast=bool)
 
 # DOI settings
 DOI_PREFIX = config('DOI_PREFIX', default='10.1234')

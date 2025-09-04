@@ -59,7 +59,7 @@ class ORCIDAuth:
             'redirect_uri': redirect_uri
         }
 
-        response = requests.post(settings.ORCID_TOKEN_URL, data=data)
+        response = requests.post(settings.ORCID_TOKEN_URL, data=data, timeout=10)
 
         if response.status_code != 200:
             raise ValidationError('Failed to get ORCID token')
@@ -87,7 +87,8 @@ class ORCIDAuth:
 
         response = requests.get(
             f'{settings.ORCID_API_URL}/person',
-            headers=headers
+            headers=headers,
+            timeout=10
         )
 
         if response.status_code != 200:
@@ -117,7 +118,8 @@ class ORCIDAuth:
 
         response = requests.get(
             f'{settings.ORCID_API_URL}/{orcid_id}/record',
-            headers=headers
+            headers=headers,
+            timeout=10
         )
 
         if response.status_code != 200:
@@ -147,7 +149,8 @@ class ORCIDAuth:
 
         response = requests.get(
             f'{settings.ORCID_API_URL}/{orcid_id}/works',
-            headers=headers
+            headers=headers,
+            timeout=10
         )
 
         if response.status_code != 200:
@@ -191,6 +194,28 @@ class ORCIDAuth:
         """
         formatted_id = ORCIDAuth.format_orcid_id(orcid_id)
         return f"https://orcid.org/{formatted_id}"
+
+    @staticmethod
+    def validate_orcid_checksum(orcid_id: str) -> bool:
+        """
+        Validate an ORCID iD using the ISO/IEC 7064 11,2 checksum algorithm.
+        Accepts formatted (with dashes) or unformatted IDs, with last char possibly 'X'.
+        """
+        if not orcid_id:
+            return False
+        # Strip non-alphanumerics
+        raw = ''.join(c for c in orcid_id if c.isalnum())
+        if len(raw) != 16:
+            return False
+        total = 0
+        for ch in raw[:-1]:
+            if not ch.isdigit():
+                return False
+            total = (total + int(ch)) * 2
+        remainder = total % 11
+        result = (12 - remainder) % 11
+        check = 'X' if result == 10 else str(result)
+        return check.upper() == raw[-1].upper()
 
     @staticmethod
     def extract_user_info(profile):

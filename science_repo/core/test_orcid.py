@@ -61,7 +61,8 @@ class ORCIDAuthTest(TestCase):
                 'grant_type': 'authorization_code',
                 'code': self.code,
                 'redirect_uri': self.redirect_uri
-            }
+            },
+            timeout=10
         )
 
     @patch('requests.post')
@@ -109,7 +110,8 @@ class ORCIDAuthTest(TestCase):
             headers={
                 'Accept': 'application/vnd.orcid+json',
                 'Authorization': f'Bearer {self.access_token}'
-            }
+            },
+            timeout=10
         )
 
     @patch('requests.get')
@@ -150,7 +152,8 @@ class ORCIDAuthTest(TestCase):
             headers={
                 'Accept': 'application/vnd.orcid+json',
                 'Authorization': f'Bearer {self.access_token}'
-            }
+            },
+            timeout=10
         )
 
     @patch('requests.get')
@@ -197,7 +200,8 @@ class ORCIDAuthTest(TestCase):
             headers={
                 'Accept': 'application/vnd.orcid+json',
                 'Authorization': f'Bearer {self.access_token}'
-            }
+            },
+            timeout=10
         )
 
     @patch('requests.get')
