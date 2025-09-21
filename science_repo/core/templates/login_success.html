@@ -12,29 +12,35 @@
 </head>
 <body>
   <div class="box">
-    <h1>Signing you in…</h1>
-    <p class="muted">Please wait while we finalize your login.</p>
+    <h1>Login Success</h1>
+    <p class="muted">Signing you in… Please wait while we finalize your login.</p>
     <pre id="msg" class="muted"></pre>
   </div>
   <script>
     (function() {
       try {
         const params = new URLSearchParams(window.location.search);
-        const access = params.get('access');
-        const refresh = params.get('refresh');
+        let access = params.get('access');
+        let refresh = params.get('refresh');
         const msg = document.getElementById('msg');
+
+        // Inline tokens provided by server when rendering directly (popup flow)
+        var inlineAccess = "{{ access_token|default:''|escapejs }}";
+        var inlineRefresh = "{{ refresh_token|default:''|escapejs }}";
+        if ((!access || !refresh) && inlineAccess && inlineRefresh) {
+          access = inlineAccess;
+          refresh = inlineRefresh;
+        }
 
         if (!access || !refresh) {
           msg.textContent = 'Missing access or refresh token in query string.';
         } else {
-          // Store under common keys for compatibility
           try {
             localStorage.setItem('jwt_access', access);
             localStorage.setItem('jwt_refresh', refresh);
             localStorage.setItem('access', access);
             localStorage.setItem('refresh', refresh);
           } catch (e) {
-            // Fallback to sessionStorage if localStorage is unavailable
             sessionStorage.setItem('jwt_access', access);
             sessionStorage.setItem('jwt_refresh', refresh);
             sessionStorage.setItem('access', access);
@@ -43,17 +49,34 @@
           msg.textContent = 'Tokens stored. Redirecting…';
         }
 
-        // Redirect to application root (prefix aware)
         var base = "{{ app_base_path|escapejs }}" || '/';
+        try {
+          // If opened as a popup, notify opener with tokens and close
+          if (window.opener && !window.opener.closed) {
+            var origin;
+            try {
+              origin = new URL(base, window.location.href).origin;
+            } catch (e) {
+              origin = window.location.origin;
+            }
+            window.opener.postMessage({
+              type: 'orcid-login-success',
+              access: access,
+              refresh: refresh
+            }, origin);
+            setTimeout(function() { window.close(); }, 100);
+            return;
+          }
+        } catch (e) {
+          // Fallback to redirect if postMessage fails
+        }
+
+        // Non-popup flow: redirect to frontend
         if (!base.endsWith('/')) { base = base + '/'; }
-        // Avoid redirect loop if already at base
-        var target = base;
-        // If FORCE_SCRIPT_NAME is '/', ensure we go to '/'
-        if (target === '') { target = '/'; }
-        window.location.replace(target);
+        if (base === '') { base = '/'; }
+        window.location.replace(base);
       } catch (err) {
         console.error('Login success handler error:', err);
-        // Still try to go to root so user isn’t stuck
         window.location.replace('/');
       }
     })();

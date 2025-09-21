@@ -14,7 +14,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserSerializer, LoginSerializer, RegistrationSerializer
 from .analytics import AnalyticsService
 from django.contrib.auth.models import Group
-from django.urls import reverse
+from django.urls import reverse, NoReverseMatch, get_script_prefix
 from django.middleware.csrf import get_token
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -23,8 +23,30 @@ from django.utils.encoding import force_bytes, force_str
 from .email import EmailService
 import logging
 logger = logging.getLogger(__name__)
+import json
 
 User = get_user_model()
+
+
+def _abs_with_script_prefix(request, path: str) -> str:
+    """Build an absolute URI for a given path, ensuring the deployment prefix
+    (FORCE_SCRIPT_NAME / SCRIPT_NAME) is applied at most once.
+    """
+    try:
+        prefix = (getattr(settings, 'FORCE_SCRIPT_NAME', '')
+                  or request.META.get('SCRIPT_NAME', '')
+                  or get_script_prefix())
+    except Exception:
+        prefix = ''
+    if prefix:
+        if not prefix.startswith('/'):
+            prefix = '/' + prefix
+        prefix = prefix.rstrip('/')
+    if not path.startswith('/'):
+        path = '/' + path
+    if prefix and not path.startswith(prefix + '/') and path != prefix:
+        path = prefix + path
+    return request.build_absolute_uri(path)
 
 
 @swagger_auto_schema(
@@ -263,8 +285,12 @@ def orcid_login(request):
     Returns:
     - 200 OK: Returns the ORCID authentication URL
     """
-    callback_url = reverse('orcid_callback')
-    redirect_uri = request.build_absolute_uri(callback_url)
+    # Determine redirect_uri
+    if getattr(settings, 'ORCID_REDIRECT_URI', None):
+        redirect_uri = settings.ORCID_REDIRECT_URI
+    else:
+        # Let Django handle any SCRIPT_NAME/FORCE_SCRIPT_NAME automatically
+        redirect_uri = _abs_with_script_prefix(request, reverse('orcid_callback'))
 
     # Generate state for CSRF protection
     import secrets
@@ -272,10 +298,45 @@ def orcid_login(request):
     request.session['orcid_oauth_state'] = state
 
     # Decide scope: if only Public API credentials, use /authenticate
-    scope = "/authenticate"
+    scope = "/authenticate /read-limited"
     auth_url = ORCIDAuth.get_auth_url(redirect_uri, scope=scope) + f"&state={state}"
     logger.debug("ORCID login: redirect_uri=%s scope=%s state_set=%s auth_url_built=%s", redirect_uri, scope, True, bool(auth_url))
     return Response({'auth_url': auth_url, 'state': state})
+
+
+@swagger_auto_schema(
+    method='get',
+    responses={302: "Redirect to ORCID login page"},
+    operation_description="Start ORCID OAuth flow in a popup-friendly way by issuing an immediate redirect to ORCID after seeding session state."
+)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def orcid_start(request):
+    """
+    Start the ORCID OAuth flow with a 302 redirect to the ORCID authorize URL.
+    This is ideal for popup windows: window.open('/api/auth/orcid/start/')
+    """
+    # Determine redirect_uri
+    if getattr(settings, 'ORCID_REDIRECT_URI', None):
+        redirect_uri = settings.ORCID_REDIRECT_URI
+    else:
+        redirect_uri = _abs_with_script_prefix(request, reverse('orcid_callback'))
+
+    # Seed state in session for CSRF protection
+    import secrets
+    state = secrets.token_urlsafe(32)
+    request.session['orcid_oauth_state'] = state
+    # Mark this flow as popup-based so the callback can inline the handoff page
+    try:
+        request.session['orcid_popup'] = True
+    except Exception:
+        pass
+
+    # Request minimal scope suitable for sign-in
+    scope = "/authenticate /read-limited"
+    auth_url = ORCIDAuth.get_auth_url(redirect_uri, scope=scope) + f"&state={state}"
+    logger.debug("ORCID start: redirecting user-agent to ORCID (redirect_uri=%s, scope=%s)", redirect_uri, scope)
+    return redirect(auth_url)
 
 
 @swagger_auto_schema(
@@ -339,8 +400,12 @@ def orcid_callback(request):
             except KeyError:
                 pass
 
-        callback_url = reverse('orcid_callback')
-        redirect_uri = request.build_absolute_uri(callback_url)
+        # Determine redirect_uri, prefer explicit override for exact-match with ORCID settings
+        if getattr(settings, 'ORCID_REDIRECT_URI', None):
+            redirect_uri = settings.ORCID_REDIRECT_URI
+        else:
+            # Let Django handle any SCRIPT_NAME/FORCE_SCRIPT_NAME automatically
+            redirect_uri = _abs_with_script_prefix(request, reverse('orcid_callback'))
         logger.debug("ORCID callback: using redirect_uri=%s", redirect_uri)
 
         # Get ORCID token
@@ -455,11 +520,43 @@ def orcid_callback(request):
                 'user': UserSerializer(user).data
             }, status=status.HTTP_200_OK)
 
-        frontend_url = settings.FRONTEND_URL
-        redirect_url = (f'{frontend_url}/login/success?'
+        # If this flow was initiated via popup, render the handoff page inline to avoid proxy routing issues
+        is_popup = False
+        try:
+            is_popup = bool(request.session.pop('orcid_popup', False))
+        except Exception:
+            is_popup = False
+        if is_popup:
+            logger.debug("ORCID callback: inline handoff for popup flow (user_id=%s)", user.id)
+            try:
+                from django.utils.safestring import mark_safe
+                import json as _json
+                user_json = _json.dumps(UserSerializer(user).data)
+            except Exception:
+                user_json = '{}'
+            context = {
+                'app_base_path': getattr(settings, 'FRONTEND_URL', '/'),
+                'access_token': str(refresh.access_token),
+                'refresh_token': str(refresh),
+                'user_json': user_json,
+            }
+            return render(request, 'login_handoff.html', context)
+
+        # Prefer API-scoped success route (works behind proxies forwarding only /api/*)
+        try:
+            success_path = reverse('login-success-api')
+        except NoReverseMatch:
+            try:
+                success_path = reverse('login-success')
+            except NoReverseMatch:
+                success_path = '/login/success'
+        # Build success URL with prefix (at most once)
+        success_url = _abs_with_script_prefix(request, success_path)
+        separator = '&' if '?' in success_url else '?'
+        redirect_url = (f'{success_url}{separator}'
                         f'access={str(refresh.access_token)}&'
                         f'refresh={str(refresh)}')
-        logger.debug("ORCID callback: redirecting to frontend success URL for user_id=%s", user.id)
+        logger.debug("ORCID callback: redirecting to login success page for user_id=%s", user.id)
         return redirect(redirect_url)
 
     except Exception as e:
@@ -920,5 +1017,35 @@ def login_success_page(request):
     localStorage (via template JS), and redirects to the app base path.
     This handles the redirect target constructed by the ORCID callback.
     """
-    app_base_path = getattr(settings, 'FORCE_SCRIPT_NAME', '/') or '/'
+    # Prefer redirecting to the React frontend origin so client-side routing takes over
+    app_base_path = getattr(settings, 'FRONTEND_URL', None) or getattr(settings, 'FORCE_SCRIPT_NAME', '/') or '/'
     return render(request, 'login_success.html', {'app_base_path': app_base_path})
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def orcid_profile(request):
+    """
+    Return the current user's ORCID profile data fetched via the backend.
+
+    Uses the application's public token to retrieve the public "person" data for the
+    user's ORCID iD. Requires the user account to have an "orcid" value.
+
+    Returns:
+    - 200 OK: { orcid: '0000-0000-0000-0000', profile: {...} }
+    - 400 Bad Request: if user has no ORCID linked or profile retrieval fails
+    """
+    if not getattr(request.user, 'orcid', None):
+        return Response({'error': 'No ORCID linked to this user.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        # Prefer public app token to avoid requiring user token scopes here
+        app_token = ORCIDAuth.get_public_app_token()
+        profile = ORCIDAuth.get_orcid_profile(app_token, request.user.orcid)
+        return Response({
+            'orcid': ORCIDAuth.format_orcid_id(request.user.orcid),
+            'profile': profile,
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.warning('Failed to fetch ORCID profile for %s: %s', getattr(request.user, 'orcid', '?'), str(e))
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -30,7 +30,7 @@ urlpatterns = [
     path('api/publications/', include('publications.urls')),
     path('api/comments/', include('comments.urls')),
     path('api/ai/', include('ai_assistant.urls')),
-    # Frontend helper pages (not under /api)
+    # Frontend helper page for token handoff after ORCID login
     re_path(r'^login/success/?$', core_views.login_success_page, name='login-success'),
     # Swagger documentation
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),

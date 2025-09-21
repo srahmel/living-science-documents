@@ -16,8 +16,12 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('roles/', views.RoleManagementView.as_view(), name='role-management'),
     path('orcid/login/', views.orcid_login, name='orcid_login'),
+    path('orcid/start/', views.orcid_start, name='orcid_start'),
     path('audits/', views.AuditLogListView.as_view(), name='audit-list'),
     path('orcid/callback/', views.orcid_callback, name='orcid_callback'),
+    path('orcid/profile/', views.orcid_profile, name='orcid_profile'),
+    # Add a second route for the login success handoff under /api/auth/* to work behind proxies that only forward /api
+    path('login/success/', views.login_success_page, name='login-success-api'),
     # Password reset endpoints
     path('password-reset/', views.password_reset_request, name='password-reset'),
     path('password-reset/confirm/', views.password_reset_confirm, name='password-reset-confirm'),

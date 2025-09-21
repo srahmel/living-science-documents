@@ -14,3 +14,8 @@ class LoginSuccessRouteTest(TestCase):
         resp = self.client.get('/login/success/')
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b'Login Success', resp.content)
+
+    def test_api_scoped_login_success_route(self):
+        resp = self.client.get('/api/auth/login/success/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b'Login Success', resp.content)

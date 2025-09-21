@@ -34,6 +34,12 @@ ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1', ca
 # Frontend URL for redirects
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 
+# Optional absolute override for the ORCID OAuth redirect URI.
+# If provided, this value will be used verbatim for the redirect_uri parameter
+# in the ORCID authorization request and token exchange. This helps avoid
+# mismatches in complex reverse-proxy/subpath deployments.
+ORCID_REDIRECT_URI = config('ORCID_REDIRECT_URI', default=None)
+
 AUTH_USER_MODEL = 'core.User'
 
 # Application definition

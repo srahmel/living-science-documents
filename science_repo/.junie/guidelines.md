@@ -1,4 +1,4 @@
-Plea
+Please note: frontend lives in ../frontend and is using react
 
 # Living Science Documents – Gesamtkonzept
 
