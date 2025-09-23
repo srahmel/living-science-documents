@@ -23,7 +23,6 @@ from django.utils.encoding import force_bytes, force_str
 from .email import EmailService
 import logging
 logger = logging.getLogger(__name__)
-import json
 
 User = get_user_model()
 
@@ -296,9 +295,14 @@ def orcid_login(request):
     import secrets
     state = secrets.token_urlsafe(32)
     request.session['orcid_oauth_state'] = state
+    # Mark this flow as popup-based as this endpoint is commonly used to initiate a popup
+    try:
+        request.session['orcid_popup'] = True
+    except Exception:
+        pass
 
     # Decide scope: if only Public API credentials, use /authenticate
-    scope = "/authenticate /read-limited"
+    scope = "/authenticate"
     auth_url = ORCIDAuth.get_auth_url(redirect_uri, scope=scope) + f"&state={state}"
     logger.debug("ORCID login: redirect_uri=%s scope=%s state_set=%s auth_url_built=%s", redirect_uri, scope, True, bool(auth_url))
     return Response({'auth_url': auth_url, 'state': state})
@@ -333,7 +337,7 @@ def orcid_start(request):
         pass
 
     # Request minimal scope suitable for sign-in
-    scope = "/authenticate /read-limited"
+    scope = "/authenticate"
     auth_url = ORCIDAuth.get_auth_url(redirect_uri, scope=scope) + f"&state={state}"
     logger.debug("ORCID start: redirecting user-agent to ORCID (redirect_uri=%s, scope=%s)", redirect_uri, scope)
     return redirect(auth_url)
@@ -528,19 +532,13 @@ def orcid_callback(request):
             is_popup = False
         if is_popup:
             logger.debug("ORCID callback: inline handoff for popup flow (user_id=%s)", user.id)
-            try:
-                from django.utils.safestring import mark_safe
-                import json as _json
-                user_json = _json.dumps(UserSerializer(user).data)
-            except Exception:
-                user_json = '{}'
             context = {
                 'app_base_path': getattr(settings, 'FRONTEND_URL', '/'),
                 'access_token': str(refresh.access_token),
                 'refresh_token': str(refresh),
-                'user_json': user_json,
+                'is_popup': True,
             }
-            return render(request, 'login_handoff.html', context)
+            return render(request, 'login_success.html', context)
 
         # Prefer API-scoped success route (works behind proxies forwarding only /api/*)
         try:
@@ -1020,32 +1018,3 @@ def login_success_page(request):
     # Prefer redirecting to the React frontend origin so client-side routing takes over
     app_base_path = getattr(settings, 'FRONTEND_URL', None) or getattr(settings, 'FORCE_SCRIPT_NAME', '/') or '/'
     return render(request, 'login_success.html', {'app_base_path': app_base_path})
-
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def orcid_profile(request):
-    """
-    Return the current user's ORCID profile data fetched via the backend.
-
-    Uses the application's public token to retrieve the public "person" data for the
-    user's ORCID iD. Requires the user account to have an "orcid" value.
-
-    Returns:
-    - 200 OK: { orcid: '0000-0000-0000-0000', profile: {...} }
-    - 400 Bad Request: if user has no ORCID linked or profile retrieval fails
-    """
-    if not getattr(request.user, 'orcid', None):
-        return Response({'error': 'No ORCID linked to this user.'}, status=status.HTTP_400_BAD_REQUEST)
-    try:
-        # Prefer public app token to avoid requiring user token scopes here
-        app_token = ORCIDAuth.get_public_app_token()
-        profile = ORCIDAuth.get_orcid_profile(app_token, request.user.orcid)
-        return Response({
-            'orcid': ORCIDAuth.format_orcid_id(request.user.orcid),
-            'profile': profile,
-        }, status=status.HTTP_200_OK)
-    except Exception as e:
-        logger.warning('Failed to fetch ORCID profile for %s: %s', getattr(request.user, 'orcid', '?'), str(e))
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
