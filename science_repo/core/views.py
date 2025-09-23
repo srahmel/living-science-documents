@@ -295,11 +295,7 @@ def orcid_login(request):
     import secrets
     state = secrets.token_urlsafe(32)
     request.session['orcid_oauth_state'] = state
-    # Mark this flow as popup-based as this endpoint is commonly used to initiate a popup
-    try:
-        request.session['orcid_popup'] = True
-    except Exception:
-        pass
+    # Popup-based flow deprecated: no session flags set; frontend should use same-window redirect (Option B).
 
     # Decide scope: if only Public API credentials, use /authenticate
     scope = "/authenticate"
@@ -330,11 +326,7 @@ def orcid_start(request):
     import secrets
     state = secrets.token_urlsafe(32)
     request.session['orcid_oauth_state'] = state
-    # Mark this flow as popup-based so the callback can inline the handoff page
-    try:
-        request.session['orcid_popup'] = True
-    except Exception:
-        pass
+    # Popup-based flow deprecated: no session flags set; frontend should use same-window redirect (Option B).
 
     # Request minimal scope suitable for sign-in
     scope = "/authenticate"
@@ -524,23 +516,19 @@ def orcid_callback(request):
                 'user': UserSerializer(user).data
             }, status=status.HTTP_200_OK)
 
-        # If this flow was initiated via popup, render the handoff page inline to avoid proxy routing issues
-        is_popup = False
-        try:
-            is_popup = bool(request.session.pop('orcid_popup', False))
-        except Exception:
-            is_popup = False
-        if is_popup:
-            logger.debug("ORCID callback: inline handoff for popup flow (user_id=%s)", user.id)
-            context = {
-                'app_base_path': getattr(settings, 'FRONTEND_URL', '/'),
-                'access_token': str(refresh.access_token),
-                'refresh_token': str(refresh),
-                'is_popup': True,
-            }
-            return render(request, 'login_success.html', context)
+        # Option B: redirect to frontend /login/success (when enabled) with tokens in URL
+        frontend_url = (getattr(settings, 'FRONTEND_URL', '') or '').rstrip('/')
+        if getattr(settings, 'ORCID_REDIRECT_TO_FRONTEND', False) and frontend_url:
+            # Provide tokens in both query and hash to support various SPA handlers
+            redirect_url = (
+                f"{frontend_url}/login/success"
+                f"?access={str(refresh.access_token)}&refresh={str(refresh)}"
+                f"#access={str(refresh.access_token)}&refresh={str(refresh)}"
+            )
+            logger.debug("ORCID callback: redirecting to frontend login success (Option B) for user_id=%s", user.id)
+            return redirect(redirect_url)
 
-        # Prefer API-scoped success route (works behind proxies forwarding only /api/*)
+        # Fallback: keep internal login success route (useful in tests/dev without FRONTEND_URL)
         try:
             success_path = reverse('login-success-api')
         except NoReverseMatch:
@@ -554,7 +542,7 @@ def orcid_callback(request):
         redirect_url = (f'{success_url}{separator}'
                         f'access={str(refresh.access_token)}&'
                         f'refresh={str(refresh)}')
-        logger.debug("ORCID callback: redirecting to login success page for user_id=%s", user.id)
+        logger.debug("ORCID callback: redirecting to internal login success page for user_id=%s", user.id)
         return redirect(redirect_url)
 
     except Exception as e:
@@ -1017,4 +1005,7 @@ def login_success_page(request):
     """
     # Prefer redirecting to the React frontend origin so client-side routing takes over
     app_base_path = getattr(settings, 'FRONTEND_URL', None) or getattr(settings, 'FORCE_SCRIPT_NAME', '/') or '/'
-    return render(request, 'login_success.html', {'app_base_path': app_base_path})
+    return render(request, 'login_success.html', {
+        'app_base_path': app_base_path,
+        'frontend_origin': getattr(settings, 'FRONTEND_URL', ''),
+    })

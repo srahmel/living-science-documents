@@ -31,8 +31,11 @@ DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
-# Frontend URL for redirects
+# Frontend URL for redirects (used for Option B redirect when enabled)
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+# Feature flag: when True, ORCID callback redirects to FRONTEND_URL/login/success with tokens.
+# Default False to keep internal redirect behavior for tests/dev.
+ORCID_REDIRECT_TO_FRONTEND = config('ORCID_REDIRECT_TO_FRONTEND', default=False, cast=bool)
 
 # Optional absolute override for the ORCID OAuth redirect URI.
 # If provided, this value will be used verbatim for the redirect_uri parameter

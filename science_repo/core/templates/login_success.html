@@ -73,8 +73,9 @@
         // 3) Direct postMessage to opener when available
         try {
           if (window.opener && !window.opener.closed) {
-            var origin = window.location.origin;
-            window.opener.postMessage(payload, origin);
+            var frontendOrigin = "{{ frontend_origin|default:''|escapejs }}";
+            var target = frontendOrigin || '*';
+            window.opener.postMessage(payload, target);
           }
         } catch (e) {}
 
